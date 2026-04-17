@@ -4,12 +4,14 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  SafeAreaView,
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, Radii, FontFamily } from '../constants/Theme';
+import { AuthStackParamList } from '../types';
 import Button from '../components/Button';
 import OnboardingSlide1 from '../components/OnboardingSlide1';
 import OnboardingSlide2 from '../components/OnboardingSlide2';
@@ -55,11 +57,9 @@ const SLIDES: SlideData[] = [
   },
 ];
 
-interface Props {
-  onFinish?: () => void;
-}
+type Props = NativeStackScreenProps<AuthStackParamList, 'Onboarding'>;
 
-const OnboardingScreen: React.FC<Props> = ({ onFinish }) => {
+const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList<SlideData>>(null);
@@ -73,7 +73,7 @@ const OnboardingScreen: React.FC<Props> = ({ onFinish }) => {
     if (currentIndex < SLIDES.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     } else {
-      onFinish?.();
+      navigation.navigate('SignUp');
     }
   };
 

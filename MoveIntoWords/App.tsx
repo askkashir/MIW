@@ -1,6 +1,14 @@
 import React from 'react';
-import { AuthNavigator } from './src/navigation/AuthNavigator';
+import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthStack } from './src/navigation/AuthStack';
 
 export default function App() {
-  return <AuthNavigator />;
+  return (
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <AuthStack />
+      </NavigationContainer>
+    </SafeAreaProvider>
+  );
 }

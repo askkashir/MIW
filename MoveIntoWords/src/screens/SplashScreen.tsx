@@ -1,17 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Image, StyleSheet, Animated, StatusBar, useWindowDimensions } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors } from '../constants/Theme';
+import { AuthStackParamList } from '../types';
 
 const MIW_LOGO = require('../../assets/miw-logo.png');
 
 const FADE_IN_DURATION = 1200;
 const HOLD_DURATION = 1500;
 
-interface Props {
-  onFinish?: () => void;
-}
+type Props = NativeStackScreenProps<AuthStackParamList, 'Splash'>;
 
-const SplashScreen: React.FC<Props> = ({ onFinish }) => {
+const SplashScreen: React.FC<Props> = ({ navigation }) => {
   const opacity = useRef(new Animated.Value(0)).current;
   const { width } = useWindowDimensions();
 
@@ -21,10 +21,13 @@ const SplashScreen: React.FC<Props> = ({ onFinish }) => {
       duration: FADE_IN_DURATION,
       useNativeDriver: true,
     }).start(() => {
-      const timer = setTimeout(() => onFinish?.(), HOLD_DURATION);
+      const timer = setTimeout(
+        () => navigation.navigate('Onboarding'),
+        HOLD_DURATION,
+      );
       return () => clearTimeout(timer);
     });
-  }, [opacity, onFinish]);
+  }, [opacity, navigation]);
 
   const logoWidth = width * 0.65;
   const logoHeight = logoWidth * 0.46;

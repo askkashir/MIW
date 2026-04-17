@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, FontFamily } from '../constants/Theme';
+import { AuthStackParamList } from '../types';
 import TextInput from '../components/TextInput';
 import AuthProgress from '../components/AuthProgress';
 import BottomAction from '../components/BottomAction';
-
-interface Props {
-  onBack?: () => void;
-  onNext?: () => void;
-}
+import { signUpWithEmail } from '../services/firebase/auth';
 
 const PASSWORD_RULES = [
   'Minimum 8 Characters',
@@ -17,10 +16,17 @@ const PASSWORD_RULES = [
   'One symbol (like ! @ # ?)',
 ];
 
-const SignUpEmailScreen: React.FC<Props> = ({ onBack, onNext }) => {
+type Props = NativeStackScreenProps<AuthStackParamList, 'SignUpEmail'>;
+
+const SignUpEmailScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleNext = async () => {
+    await signUpWithEmail(email, password);
+    navigation.navigate('Verification');
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -72,7 +78,7 @@ const SignUpEmailScreen: React.FC<Props> = ({ onBack, onNext }) => {
         </View>
       </ScrollView>
 
-      <BottomAction onBack={() => onBack?.()} onNext={() => onNext?.()} />
+      <BottomAction onBack={() => navigation.goBack()} onNext={handleNext} />
     </SafeAreaView>
   );
 };
