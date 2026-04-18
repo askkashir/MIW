@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, FlatList, StyleSheet, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing } from '../constants/Theme';
 import Button from '../components/Button';
 import JournalCard from '../components/JournalCard';

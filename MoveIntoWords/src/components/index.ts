@@ -4,3 +4,4 @@ export { default as JournalCard } from './JournalCard';
 export { SocialButton } from './SocialButton';
 export { AuthProgress } from './AuthProgress';
 export { BottomAction } from './BottomAction';
+export { BottomTabBar } from './BottomTabBar';

@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, FontFamily } from '../constants/Theme';
+import { AuthStackParamList } from '../types';
 import TextInput from '../components/TextInput';
 import SocialButton from '../components/SocialButton';
+import { signInWithEmail, signInWithGoogle, signInWithApple } from '../services/firebase/auth';
 
-interface Props {
-  onCreateAccount?: () => void;
-}
+type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
 
-const SignInScreen: React.FC<Props> = ({ onCreateAccount }) => {
+const SignInScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleSignIn = async () => {
+    await signInWithEmail(email, password);
+    // TODO (Firebase): On success, navigate to 'Main'
+    // navigation.navigate('Main');
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -53,7 +61,7 @@ const SignInScreen: React.FC<Props> = ({ onCreateAccount }) => {
           type="email"
           title="Continue With Email"
           icon="✉"
-          onPress={() => {}}
+          onPress={handleSignIn}
           style={styles.actionBtn}
         />
 
@@ -63,19 +71,19 @@ const SignInScreen: React.FC<Props> = ({ onCreateAccount }) => {
           type="apple"
           title="Continue With Apple"
           icon=""
-          onPress={() => {}}
+          onPress={signInWithApple}
           style={styles.socialBtn}
         />
         <SocialButton
           type="google"
           title="Continue With Google"
           icon="G"
-          onPress={() => {}}
+          onPress={signInWithGoogle}
         />
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>New here? </Text>
-          <Pressable onPress={onCreateAccount}>
+          <Pressable onPress={() => navigation.navigate('SignUp')}>
             <Text style={styles.footerLink}>Create an account</Text>
           </Pressable>
         </View>

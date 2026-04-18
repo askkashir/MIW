@@ -3,22 +3,22 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   Pressable,
   Image,
   useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, FontFamily } from '../constants/Theme';
+import { AuthStackParamList } from '../types';
 import SocialButton from '../components/SocialButton';
+import { signInWithGoogle, signInWithApple } from '../services/firebase/auth';
 
 const MIW_LOGO = require('../../assets/miw-logo.png');
 
-interface Props {
-  onSignIn?: () => void;
-  onEmail?: () => void;
-}
+type Props = NativeStackScreenProps<AuthStackParamList, 'SignUp'>;
 
-const SignUpScreen: React.FC<Props> = ({ onSignIn, onEmail }) => {
+const SignUpScreen: React.FC<Props> = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const logoWidth = width * 0.5;
   const logoHeight = logoWidth * 0.45;
@@ -45,26 +45,26 @@ const SignUpScreen: React.FC<Props> = ({ onSignIn, onEmail }) => {
           type="email"
           title="Continue With Email"
           icon="✉"
-          onPress={() => onEmail?.()}
+          onPress={() => navigation.navigate('SignUpEmail')}
           style={styles.actionBtn}
         />
         <SocialButton
           type="apple"
           title="Continue With Apple"
           icon=""
-          onPress={() => {}}
+          onPress={signInWithApple}
           style={styles.socialBtn}
         />
         <SocialButton
           type="google"
           title="Continue With Google"
           icon="G"
-          onPress={() => {}}
+          onPress={signInWithGoogle}
         />
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Have an account? </Text>
-          <Pressable onPress={onSignIn}>
+          <Pressable onPress={() => navigation.navigate('SignIn')}>
             <Text style={styles.footerLink}>Sign In</Text>
           </Pressable>
         </View>
