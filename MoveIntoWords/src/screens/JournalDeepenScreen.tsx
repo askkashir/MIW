@@ -6,18 +6,25 @@ import { Colors, Typography, Spacing, Radii } from '../constants/Theme';
 import { JournalStackParamList } from '../types';
 import JournalProgress from '../components/JournalProgress';
 
-const PREVIOUS_RESPONSE = "Right now, I'm juggling a few deadlines at once and trying not to drop any details. It's mostly.....";
-
 type Props = NativeStackScreenProps<JournalStackParamList, 'JournalDeepen'>;
 
-const JournalDeepenScreen: React.FC<Props> = ({ navigation }) => {
+const JournalDeepenScreen: React.FC<Props> = ({ navigation, route }) => {
   const [text, setText] = useState('');
+  const incomingContent = route.params?.content ?? '';
+
+  const PREVIOUS_RESPONSE = incomingContent.length > 0
+    ? incomingContent
+    : "Right now, I'm juggling a few deadlines at once and trying not to drop any details. It's mostly.....";
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.header}>
             <JournalProgress currentStep={2} totalSteps={4} activeColor={Colors.primary} inactiveColor={Colors.dotInactive} />
+            <TouchableOpacity style={styles.crisisLink} onPress={() => (navigation as any).navigate('CrisisResources')}>
+              <Text style={styles.crisisText}>Crisis Resources</Text>
+            </TouchableOpacity>
             <View style={styles.titleContainer}>
               <View style={styles.iconCircle}><Text style={styles.iconText}>💧</Text></View>
               <Text style={[Typography.h1, styles.title]}>Deepen</Text>
@@ -33,7 +40,10 @@ const JournalDeepenScreen: React.FC<Props> = ({ navigation }) => {
             <TextInput style={[Typography.body, styles.input]} placeholder="Start typing..." placeholderTextColor={Colors.textPlaceholder} multiline autoFocus={false} value={text} onChangeText={setText} textAlignVertical="top" />
           </View>
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.navigate('JournalReflect')}>
+            <TouchableOpacity
+              style={styles.ctaButton}
+              onPress={() => navigation.navigate('JournalReflect', { content: incomingContent, deepenContent: text })}
+            >
               <Text style={[Typography.button, styles.ctaButtonText]}>Start Writing</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -50,6 +60,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   container: { flex: 1, paddingHorizontal: Spacing.xl, paddingBottom: Spacing.lg },
   header: { alignItems: 'center', paddingTop: Spacing.lg },
+  crisisLink: { alignSelf: 'flex-end', marginTop: Spacing.xs },
+  crisisText: { ...Typography.caption, color: Colors.textSecondary, fontSize: 11 },
   titleContainer: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.md, gap: Spacing.xs },
   iconCircle: { width: 32, height: 32, borderRadius: Radii.full, backgroundColor: '#F5EBEB', alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 16 },

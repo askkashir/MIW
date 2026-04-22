@@ -5,77 +5,78 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, Radii, FontFamily } from '../constants/Theme';
 import { ModulesStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
-
-const CHECKLIST = [
-  'Understanding the core concept',
-  'Reflect on past experiences',
-  'Identify patterns in your behaviour',
-  'Develop strategies for growth',
-];
+import { MODULES } from '../constants/modules';
+import { useJournalStore } from '../store/useJournalStore';
 
 type Props = NativeStackScreenProps<ModulesStackParamList, 'ModuleDetail'>;
 
-export const ModuleDetailScreen: React.FC<Props> = ({ navigation }) => (
-  <SafeAreaView style={styles.safe}>
-    {/* Header */}
-    <View style={styles.header}>
-      <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn}>
-        <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-      </Pressable>
-      <View style={styles.profilePic}>
-        <Ionicons name="person" size={20} color={Colors.white} />
-      </View>
-    </View>
+export const ModuleDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const moduleId = (route.params as any)?.moduleId as string | undefined;
+  const module = MODULES.find((m) => m.id === moduleId) ?? MODULES[0];
+  const moduleProgress = useJournalStore((s) => s.moduleProgress);
+  const savedProgress = moduleProgress.find((p) => p.moduleId === module.id);
+  const hasStarted = savedProgress && savedProgress.currentStep > 0;
 
-    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      {/* Module Hero */}
-      <View style={styles.heroSection}>
-        <View style={styles.moduleIconLg}>
-          <Ionicons name="flash" size={32} color="#FFD700" />
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn}>
+          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+        </Pressable>
+        <View style={styles.profilePic}>
+          <Ionicons name="person" size={20} color={Colors.white} />
         </View>
-        <Text style={styles.moduleTitle}>Growth & Resilience</Text>
-        <Text style={styles.moduleSubtitle}>Reflect, recover, and grow.</Text>
       </View>
 
-      {/* Description */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>About This Module</Text>
-        <Text style={styles.cardText}>
-          This module helps you develop resilience by exploring challenges you've faced, what they taught you, and how you can apply those lessons going forward. Through a series of guided prompts, you'll gain deeper insight into your inner strength.
-        </Text>
-      </View>
-
-      {/* Checklist */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Inside This Module</Text>
-        {CHECKLIST.map((item) => (
-          <View key={item} style={styles.checkRow}>
-            <View style={styles.checkCircle}>
-              <Ionicons name="checkmark" size={12} color={Colors.white} />
-            </View>
-            <Text style={styles.checkText}>{item}</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.heroSection}>
+          <View style={styles.moduleIconLg}>
+            <Ionicons name="flash" size={32} color="#FFD700" />
           </View>
-        ))}
-      </View>
-
-      {/* Your Progress Card */}
-      <View style={styles.progressCard}>
-        <View style={styles.progressPill}>
-          <Text style={styles.progressPillText}>In Progress</Text>
+          <Text style={styles.moduleTitle}>{module.title}</Text>
+          <Text style={styles.moduleSubtitle}>{module.description}</Text>
         </View>
-        <Text style={styles.progressTitle}>Reflect on a recent setback or failure.</Text>
-        <Text style={styles.progressFooter}>Prompt 8 of 12 · Growth & Resilience</Text>
-      </View>
-    </ScrollView>
 
-    {/* Bottom Action */}
-    <View style={styles.bottomAction}>
-      <Pressable style={styles.continueBtn} onPress={() => navigation.navigate('ModuleWrite')}>
-        <Text style={styles.continueBtnText}>Continue</Text>
-      </Pressable>
-    </View>
-  </SafeAreaView>
-);
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>About This Module</Text>
+          <Text style={styles.cardText}>{module.description}</Text>
+          <Text style={styles.cardMeta}>{module.estimatedMinutes} min · {module.steps.length} steps</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Inside This Module</Text>
+          {module.steps.map((step) => (
+            <View key={step.stepNumber} style={styles.checkRow}>
+              <View style={[styles.checkCircle, savedProgress && savedProgress.currentStep >= step.stepNumber && styles.checkCircleDone]}>
+                <Ionicons name="checkmark" size={12} color={Colors.white} />
+              </View>
+              <Text style={styles.checkText}>{step.prompt.slice(0, 60)}…</Text>
+            </View>
+          ))}
+        </View>
+
+        {hasStarted && (
+          <View style={styles.progressCard}>
+            <View style={styles.progressPill}>
+              <Text style={styles.progressPillText}>In Progress</Text>
+            </View>
+            <Text style={styles.progressTitle}>Step {savedProgress!.currentStep} of {savedProgress!.totalSteps} completed</Text>
+            <Text style={styles.progressFooter}>{module.title}</Text>
+          </View>
+        )}
+      </ScrollView>
+
+      <View style={styles.bottomAction}>
+        <Pressable
+          style={styles.continueBtn}
+          onPress={() => navigation.navigate('ModuleWrite', { moduleId: module.id })}
+        >
+          <Text style={styles.continueBtnText}>{hasStarted ? 'Continue' : 'Begin'}</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+};
 
 export default ModuleDetailScreen;
 
@@ -91,9 +92,11 @@ const styles = StyleSheet.create({
   moduleSubtitle: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center' },
   card: { backgroundColor: Colors.white, padding: Spacing.lg, borderRadius: Radii.lg, borderWidth: 1, borderColor: '#F0F0F0', marginBottom: Spacing.lg, shadowColor: Colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 5, elevation: 1 },
   cardTitle: { fontFamily: FontFamily.serif, fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: Spacing.md },
-  cardText: { ...Typography.body, color: Colors.textSecondary, lineHeight: 24 },
+  cardText: { ...Typography.body, color: Colors.textSecondary, lineHeight: 24, marginBottom: Spacing.sm },
+  cardMeta: { ...Typography.caption, color: Colors.textSecondary },
   checkRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm },
-  checkCircle: { width: 20, height: 20, borderRadius: 10, backgroundColor: Colors.primaryDark, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.sm },
+  checkCircle: { width: 20, height: 20, borderRadius: 10, backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.sm },
+  checkCircleDone: { backgroundColor: Colors.primaryDark },
   checkText: { ...Typography.caption, color: Colors.textPrimary, flex: 1 },
   progressCard: { backgroundColor: Colors.white, padding: Spacing.lg, borderRadius: Radii.lg, borderWidth: 1, borderColor: '#F0F0F0', marginBottom: Spacing.lg },
   progressPill: { backgroundColor: Colors.primaryDark, alignSelf: 'flex-start', paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radii.sm, marginBottom: Spacing.sm },

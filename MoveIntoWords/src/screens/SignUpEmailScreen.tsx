@@ -7,7 +7,7 @@ import { AuthStackParamList } from '../types';
 import TextInput from '../components/TextInput';
 import AuthProgress from '../components/AuthProgress';
 import BottomAction from '../components/BottomAction';
-import { signUpWithEmail } from '../services/firebase/auth';
+import { signUpWithEmail, getAuthErrorMessage } from '../services/firebase/auth';
 
 const PASSWORD_RULES = [
   'Minimum 8 Characters',
@@ -22,10 +22,34 @@ const SignUpEmailScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleNext = async () => {
-    await signUpWithEmail(email, password);
-    navigation.navigate('Verification');
+    setError(null);
+
+    if (!email.trim()) {
+      setError('Please enter your email address');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await signUpWithEmail(email.trim(), password);
+      navigation.navigate('Verification');
+    } catch (err) {
+      setError(getAuthErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -40,6 +64,8 @@ const SignUpEmailScreen: React.FC<Props> = ({ navigation }) => {
             updates.
           </Text>
         </View>
+
+        {error && <Text style={styles.errorText}>{error}</Text>}
 
         <Text style={styles.label}>Email</Text>
         <TextInput
@@ -78,7 +104,10 @@ const SignUpEmailScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      <BottomAction onBack={() => navigation.goBack()} onNext={handleNext} />
+      <BottomAction
+        onBack={() => navigation.goBack()}
+        onNext={handleNext}
+      />
     </SafeAreaView>
   );
 };
@@ -110,6 +139,12 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+  errorText: {
+    ...Typography.caption,
+    color: Colors.error,
+    textAlign: 'center',
+    marginBottom: Spacing.md,
   },
   label: {
     ...Typography.caption,

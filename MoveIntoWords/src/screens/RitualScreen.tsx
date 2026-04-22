@@ -7,9 +7,11 @@ import { AuthStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
 import { useUserStore } from '../store/useUserStore';
+import { createUserProfile } from '../services/firebase/firestore';
+import { getCurrentUser } from '../services/firebase/auth';
 
 const TIME_SLOTS = [
-  { id: 'morning', label: 'Morning', sublabel: '(before 10am)', icon: 'cloud', bgColor: Colors.primaryDark, textColor: Colors.white, iconColor: Colors.white },
+  { id: 'morning', label: 'Morning', sublabel: '(before 10am)', icon: 'cloud',  bgColor: Colors.primaryDark, textColor: Colors.white, iconColor: Colors.white },
   { id: 'midday',  label: 'Midday',  sublabel: '(10am – 3pm)',  icon: 'sunny', bgColor: '#EAE1F3', textColor: Colors.textPrimary, iconColor: '#4A3B74' },
   { id: 'evening', label: 'Evening', sublabel: '(3pm – 7pm)',   icon: 'cafe',  bgColor: '#E4F0F2', textColor: Colors.textPrimary, iconColor: '#366F7C' },
   { id: 'night',   label: 'Night',   sublabel: '(after 7pm)',   icon: 'moon',  bgColor: '#F2EFE1', textColor: Colors.textPrimary, iconColor: '#7A6229' },
@@ -18,19 +20,48 @@ const TIME_SLOTS = [
 type Props = NativeStackScreenProps<AuthStackParamList, 'Ritual'>;
 
 export const RitualScreen: React.FC<Props> = ({ navigation }) => {
-  const { setRitual } = useUserStore();
+  const { setRitual, preferences, displayName, email, uid } = useUserStore();
   const [selectedTime, setSelectedTime] = useState('morning');
   const [remindersEnabled, setRemindersEnabled] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setRitual({ timeOfDay: selectedTime, remindersEnabled });
-    navigation.navigate('Main');
+
+    const firebaseUid = uid ?? getCurrentUser()?.uid;
+    if (!firebaseUid) {
+      navigation.navigate('FirstPrompt');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      await createUserProfile(firebaseUid, {
+        displayName: displayName ?? '',
+        email: email ?? '',
+        demographics: {
+          ageRange: preferences.ageRange,
+          gender: preferences.gender,
+        },
+        preferences: preferences.topics,
+        ritual: { timeOfDay: selectedTime, remindersEnabled },
+        onboardingComplete: false,
+      });
+      navigation.navigate('FirstPrompt');
+    } catch {
+      setError('Could not save your profile. You can continue anyway.');
+      navigation.navigate('FirstPrompt');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Build Your{'\n'}Ritual, Paula.</Text>
+        <Text style={styles.title}>{'Build Your\nRitual.'}</Text>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>The best time to actually reflect is the one you'll actually keep.</Text>
@@ -78,11 +109,17 @@ export const RitualScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <Text style={styles.checkboxLabel}>Get Priority Reminders Daily?</Text>
           </Pressable>
+
+          {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button label="Skip for now" onPress={handleContinue} style={styles.continueBtn} />
+        <Button
+          label={isLoading ? 'Saving...' : 'Skip for now'}
+          onPress={handleContinue}
+          style={styles.continueBtn}
+        />
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backText}>Back</Text>
         </Pressable>
@@ -110,6 +147,7 @@ const styles = StyleSheet.create({
   checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   checkboxActive: { backgroundColor: Colors.white, borderColor: Colors.textPrimary },
   checkboxLabel: { ...Typography.caption, color: Colors.textSecondary },
+  errorText: { ...Typography.caption, color: Colors.error, textAlign: 'center', marginTop: Spacing.sm },
   footer: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg, paddingBottom: Spacing.xxl },
   continueBtn: { borderRadius: Radii.full, backgroundColor: Colors.primaryDark, marginBottom: Spacing.lg },
   backBtn: { alignItems: 'center', paddingVertical: Spacing.xs },

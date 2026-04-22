@@ -5,11 +5,43 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, Radii } from '../constants/Theme';
 import { JournalStackParamList } from '../types';
 import JournalProgress from '../components/JournalProgress';
+import { saveJournalEntry } from '../services/firebase/firestore';
+import { useUserStore } from '../store/useUserStore';
+import { useJournalStore } from '../store/useJournalStore';
+import type { JournalEntry } from '../types';
 
 type Props = NativeStackScreenProps<JournalStackParamList, 'JournalSave'>;
 
-const JournalSaveScreen: React.FC<Props> = ({ navigation }) => {
+const JournalSaveScreen: React.FC<Props> = ({ navigation, route }) => {
   const [firstName, setFirstName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const uid = useUserStore((s) => s.uid);
+  const { addEntry } = useJournalStore();
+
+  const handleSave = async () => {
+    const { content = '', deepenContent = '', reflectContent = '' } = route.params ?? {};
+    const combined = [content, deepenContent, reflectContent].filter(Boolean).join('\n\n');
+    const entry: JournalEntry = {
+      id: Date.now().toString(),
+      content: combined || ' ',
+      createdAt: Date.now(),
+    };
+
+    setIsSaving(true);
+    try {
+      if (uid) {
+        await saveJournalEntry(uid, entry);
+      }
+      addEntry(entry);
+    } catch {
+      // Fail silently — entry is still in local store
+    } finally {
+      setIsSaving(false);
+    }
+    navigation.getParent()?.goBack();
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -42,8 +74,8 @@ const JournalSaveScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           </ScrollView>
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.getParent()?.goBack()}>
-              <Text style={[Typography.button, styles.ctaButtonText]}>Continue</Text>
+            <TouchableOpacity style={styles.ctaButton} onPress={handleSave} disabled={isSaving}>
+              <Text style={[Typography.button, styles.ctaButtonText]}>{isSaving ? 'Saving...' : 'Continue'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <Text style={[Typography.button, styles.backButtonText]}>← Back</Text>

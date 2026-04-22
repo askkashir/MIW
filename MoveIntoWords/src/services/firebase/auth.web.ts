@@ -1,24 +1,20 @@
 /**
- * Firebase Authentication — Move Into Words
+ * Firebase Authentication — Web build (auth.web.ts)
  *
- * Real implementations for all auth operations.
- * Each function wraps Firebase Auth SDK calls with typed error handling.
+ * Metro automatically uses this file instead of auth.ts when bundling for web.
+ * Google and Apple sign-in are native-only; on web they throw a user-friendly
+ * error that screens catch and display inline — no crash.
  */
 
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithCredential,
   sendEmailVerification,
   signOut as firebaseSignOut,
   onAuthStateChanged,
-  GoogleAuthProvider,
-  OAuthProvider,
   type User,
   type Unsubscribe,
 } from 'firebase/auth';
-import { Platform } from 'react-native';
-
 import { auth } from './config';
 import { useUserStore } from '../../store/useUserStore';
 import { useJournalStore } from '../../store/useJournalStore';
@@ -36,10 +32,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   'auth/invalid-credential': 'Invalid email or password. Please try again',
 };
 
-/**
- * Map a Firebase Auth error code to a user-friendly message.
- * Falls back to a generic message for unmapped codes.
- */
 export function getAuthErrorMessage(error: unknown): string {
   if (
     typeof error === 'object' &&
@@ -55,10 +47,6 @@ export function getAuthErrorMessage(error: unknown): string {
 
 // ── Sign Up ───────────────────────────────────────────────────────────────────
 
-/**
- * Create a new user account with email and password.
- * Immediately sends a verification email after creation.
- */
 export async function signUpWithEmail(
   email: string,
   password: string,
@@ -70,10 +58,6 @@ export async function signUpWithEmail(
 
 // ── Sign In ───────────────────────────────────────────────────────────────────
 
-/**
- * Sign in an existing user with email and password.
- * Returns the Firebase User on success.
- */
 export async function signInWithEmail(
   email: string,
   password: string,
@@ -82,66 +66,24 @@ export async function signInWithEmail(
   return credential.user;
 }
 
-/**
- * Sign in with a Google account (OAuth).
- * Uses @react-native-google-signin/google-signin for native flow.
- */
+/** Google Sign-In is not available on web — throws a user-friendly error. */
 export async function signInWithGoogle(): Promise<User> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { GoogleSignin } = require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
-  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-  const signInResult = await GoogleSignin.signIn();
-  const idToken = signInResult.data?.idToken;
-  if (!idToken) {
-    throw new Error('Google Sign-In failed: no ID token returned');
-  }
-  const googleCredential = GoogleAuthProvider.credential(idToken);
-  const result = await signInWithCredential(auth, googleCredential);
-  return result.user;
+  throw new Error('Google Sign-In is not available on web. Please use email sign-in.');
 }
 
-/**
- * Sign in with an Apple account (OAuth — iOS only).
- * Uses @invertase/react-native-apple-authentication for native flow.
- */
+/** Apple Sign-In is not available on web — throws a user-friendly error. */
 export async function signInWithApple(): Promise<User> {
-  if (Platform.OS !== 'ios') {
-    throw new Error('Apple Sign-In is only available on iOS');
-  }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { appleAuth } = require('@invertase/react-native-apple-authentication') as typeof import('@invertase/react-native-apple-authentication');
-  const appleAuthRequestResponse = await appleAuth.performRequest({
-    requestedOperation: appleAuth.Operation.LOGIN,
-    requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
-  });
-
-  if (!appleAuthRequestResponse.identityToken) {
-    throw new Error('Apple Sign-In failed: no identity token returned');
-  }
-
-  const { identityToken, nonce } = appleAuthRequestResponse;
-  const appleCredential = new OAuthProvider('apple.com').credential({
-    idToken: identityToken,
-    rawNonce: nonce,
-  });
-  const result = await signInWithCredential(auth, appleCredential);
-  return result.user;
+  throw new Error('Apple Sign-In is not available on web. Please use email sign-in.');
 }
 
 // ── Verification ──────────────────────────────────────────────────────────────
 
-/**
- * Send / resend an email verification link to the currently signed-in user.
- */
 export async function sendVerificationEmailToUser(): Promise<void> {
   const user = auth.currentUser;
   if (!user) throw new Error('No user is signed in');
   await sendEmailVerification(user);
 }
 
-/**
- * Reload the current user and return whether their email is verified.
- */
 export async function checkEmailVerified(): Promise<boolean> {
   const user = auth.currentUser;
   if (!user) return false;
@@ -151,26 +93,16 @@ export async function checkEmailVerified(): Promise<boolean> {
 
 // ── Session ───────────────────────────────────────────────────────────────────
 
-/**
- * Returns the currently authenticated user, or null if not signed in.
- */
 export function getCurrentUser(): User | null {
   return auth.currentUser;
 }
 
-/**
- * Sign out the current user and clear all local Zustand stores.
- */
 export async function signOut(): Promise<void> {
   await firebaseSignOut(auth);
   useUserStore.getState().clearUser();
   useJournalStore.getState().clearAll();
 }
 
-/**
- * Listen to authentication state changes.
- * Returns an unsubscribe function.
- */
 export function listenToAuthState(
   callback: (user: User | null) => void,
 ): Unsubscribe {
