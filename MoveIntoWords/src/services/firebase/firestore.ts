@@ -1,95 +1,118 @@
 /**
- * Firestore Database — STUBS
+ * Firestore Database — Move Into Words
  *
- * Each function below is a placeholder for the corresponding Firestore call.
- * The app's stores and screens already call these functions — when you
- * integrate Firebase, replace the stub bodies with real Firestore operations.
+ * Real implementations for all Firestore operations.
  *
- * Suggested Firestore schema:
- *   /users/{uid}                    → UserProfile document
- *   /users/{uid}/entries/{entryId}  → JournalEntry documents
- *   /users/{uid}/progress/{moduleId} → ModuleProgress documents
- *
- * TODO (Firebase): Install firebase — `npx expo install firebase`
- * Then import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
+ * Schema:
+ *   /users/{uid}                           → UserProfile document
+ *   /journalEntries/{uid}/entries/{id}     → JournalEntry documents
+ *   /moduleProgress/{uid}/modules/{moduleId} → ModuleProgress documents
  */
 
-import { JournalEntry, ModuleProgress } from '../../types';
+import {
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  collection,
+  query,
+  orderBy,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { db } from './config';
+import type { JournalEntry, ModuleProgress, UserProfile } from '../../types';
 
 // ── User Profile ──────────────────────────────────────────────────────────────
 
 /**
- * Save the user's profile to Firestore.
- * TODO: implement with Firestore — setDoc(doc(db, 'users', uid), profile)
+ * Create a new user profile document in Firestore.
+ * Called once at the end of onboarding (RitualScreen).
  */
-export async function saveUserProfile(
-  _uid: string,
-  _profile: { displayName: string; email: string },
+export async function createUserProfile(
+  uid: string,
+  data: Omit<UserProfile, 'createdAt'>,
 ): Promise<void> {
-  // TODO: implement with Firestore
-  console.log('[Firestore] saveUserProfile called — stub');
+  await setDoc(doc(db, 'users', uid), {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Set onboardingComplete to true for the given user.
+ * Called after the FirstPrompt screen.
+ */
+export async function updateOnboardingComplete(uid: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), {
+    onboardingComplete: true,
+  });
 }
 
 /**
  * Fetch the user's profile from Firestore.
- * TODO: implement with Firestore — getDoc(doc(db, 'users', uid))
+ * Returns null if the document does not exist.
  */
 export async function getUserProfile(
-  _uid: string,
-): Promise<null> {
-  // TODO: implement with Firestore
-  console.log('[Firestore] getUserProfile called — stub');
-  return null;
+  uid: string,
+): Promise<UserProfile | null> {
+  const snap = await getDoc(doc(db, 'users', uid));
+  if (!snap.exists()) return null;
+  return snap.data() as UserProfile;
 }
 
 // ── Journal Entries ───────────────────────────────────────────────────────────
 
 /**
  * Save a new journal entry to Firestore.
- * TODO: implement with Firestore — setDoc(doc(db, 'users', uid, 'entries', entry.id), entry)
+ * Stored under journalEntries/{uid}/entries/{entryId}.
  */
 export async function saveJournalEntry(
-  _uid: string,
-  _entry: JournalEntry,
+  uid: string,
+  entry: JournalEntry,
 ): Promise<void> {
-  // TODO: implement with Firestore
-  console.log('[Firestore] saveJournalEntry called — stub');
+  await setDoc(doc(db, 'journalEntries', uid, 'entries', entry.id), entry);
 }
 
 /**
- * Fetch all journal entries for the user from Firestore.
- * TODO: implement with Firestore — getDocs(collection(db, 'users', uid, 'entries'))
+ * Fetch all journal entries for the user, ordered by createdAt descending.
  */
 export async function getJournalEntries(
-  _uid: string,
+  uid: string,
 ): Promise<JournalEntry[]> {
-  // TODO: implement with Firestore
-  console.log('[Firestore] getJournalEntries called — stub');
-  return [];
+  const q = query(
+    collection(db, 'journalEntries', uid, 'entries'),
+    orderBy('createdAt', 'desc'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data() as JournalEntry);
 }
 
 // ── Module Progress ───────────────────────────────────────────────────────────
 
 /**
- * Save module progress for the user to Firestore.
- * TODO: implement with Firestore — setDoc(doc(db, 'users', uid, 'progress', progress.moduleId), progress)
+ * Save / upsert module progress for the user.
+ * Uses setDoc with merge to allow partial updates.
  */
 export async function saveModuleProgress(
-  _uid: string,
-  _progress: ModuleProgress,
+  uid: string,
+  progress: ModuleProgress,
 ): Promise<void> {
-  // TODO: implement with Firestore
-  console.log('[Firestore] saveModuleProgress called — stub');
+  await setDoc(
+    doc(db, 'moduleProgress', uid, 'modules', progress.moduleId),
+    progress,
+    { merge: true },
+  );
 }
 
 /**
- * Fetch all module progress records for the user from Firestore.
- * TODO: implement with Firestore — getDocs(collection(db, 'users', uid, 'progress'))
+ * Fetch all module progress records for the user.
  */
 export async function getModuleProgress(
-  _uid: string,
+  uid: string,
 ): Promise<ModuleProgress[]> {
-  // TODO: implement with Firestore
-  console.log('[Firestore] getModuleProgress called — stub');
-  return [];
+  const snap = await getDocs(
+    collection(db, 'moduleProgress', uid, 'modules'),
+  );
+  return snap.docs.map((d) => d.data() as ModuleProgress);
 }

@@ -5,49 +5,81 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, Radii, FontFamily } from '../constants/Theme';
 import { JourneyStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { useJournalStore } from '../store/useJournalStore';
 
 type Props = NativeStackScreenProps<JourneyStackParamList, 'EntryArchive'>;
 
-export const EntryArchiveScreen: React.FC<Props> = ({ navigation }) => (
-  <SafeAreaView style={styles.safe}>
-    <View style={styles.header}>
-      <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn}>
-        <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-      </Pressable>
-      <Text style={styles.headerTitle}>Entry Archive</Text>
-      <View style={styles.profilePic}>
-        <Ionicons name="person" size={20} color={Colors.white} />
-      </View>
-    </View>
+const formatDate = (ts: number): string => {
+  return new Date(ts).toLocaleDateString('default', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
 
-    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer} contentContainerStyle={styles.filtersContent}>
-        <Pressable style={[styles.filterPill, styles.filterPillActive]}><Text style={[styles.filterText, styles.filterTextActive]}>All (22)</Text></Pressable>
-        <Pressable style={styles.filterPill}><Text style={styles.filterText}>Gratitude (9)</Text></Pressable>
-        <Pressable style={styles.filterPill}><Text style={styles.filterText}>Growth (12)</Text></Pressable>
-        <Pressable style={styles.filterPill}><Text style={styles.filterText}>Expenditu...</Text></Pressable>
-      </ScrollView>
+const wordCount = (content: string): number =>
+  content.split(/\s+/).filter(Boolean).length;
 
-      <View style={styles.groupSection}>
-        <Text style={styles.groupTitle}>Growth & Resilience</Text>
-        <Text style={styles.groupSubtitle}>Reflect, recover, and grow.</Text>
-        <View style={styles.entryList}>
-          {[0, 1].map((i) => (
-            <Pressable key={i} style={styles.entryCard}>
-              <View style={styles.entryIconBox}><Ionicons name="flash" size={16} color="#F2C94C" /></View>
-              <View style={styles.entryContent}>
-                <Text style={styles.entryTitle}>Reflect on a recent setback or failure.</Text>
-                <Text style={styles.entryPreview} numberOfLines={3}>I faced a really difficult situation at work. Initially, I felt overwhelmed and unsure how to handle it. It took sometime, but...</Text>
-                <Text style={styles.entryMeta}>• 137 words • 16 min</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
-            </Pressable>
-          ))}
+export const EntryArchiveScreen: React.FC<Props> = ({ navigation }) => {
+  const entries = useJournalStore((s) => s.entries);
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn}>
+          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Entry Archive</Text>
+        <View style={styles.profilePic}>
+          <Ionicons name="person" size={20} color={Colors.white} />
         </View>
       </View>
-    </ScrollView>
-  </SafeAreaView>
-);
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Filters row — kept as UI, count derived from real data */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer} contentContainerStyle={styles.filtersContent}>
+          <Pressable style={[styles.filterPill, styles.filterPillActive]}>
+            <Text style={[styles.filterText, styles.filterTextActive]}>All ({entries.length})</Text>
+          </Pressable>
+        </ScrollView>
+
+        {entries.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="book-outline" size={48} color={Colors.border} />
+            <Text style={styles.emptyTitle}>No entries yet</Text>
+            <Text style={styles.emptySubtitle}>Your journal entries will appear here once you start writing.</Text>
+          </View>
+        ) : (
+          <View style={styles.groupSection}>
+            <Text style={styles.groupTitle}>All Entries</Text>
+            <Text style={styles.groupSubtitle}>{entries.length} {entries.length === 1 ? 'entry' : 'entries'} saved</Text>
+            <View style={styles.entryList}>
+              {entries.map((entry) => {
+                const preview = entry.content.trim().slice(0, 100);
+                const words = wordCount(entry.content);
+                return (
+                  <Pressable key={entry.id} style={styles.entryCard} onPress={() => navigation.navigate('EntryDetail', { entryId: entry.id })}>
+                    <View style={styles.entryIconBox}>
+                      <Ionicons name="flash" size={16} color="#F2C94C" />
+                    </View>
+                    <View style={styles.entryContent}>
+                      <Text style={styles.entryTitle}>{formatDate(entry.createdAt)}</Text>
+                      <Text style={styles.entryPreview} numberOfLines={3}>
+                        {preview}{entry.content.length > 100 ? '...' : ''}
+                      </Text>
+                      <Text style={styles.entryMeta}>• {words} {words === 1 ? 'word' : 'words'}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
 
 export default EntryArchiveScreen;
 
@@ -64,6 +96,9 @@ const styles = StyleSheet.create({
   filterPillActive: { backgroundColor: '#731C32', borderColor: '#731C32' },
   filterText: { ...Typography.caption, fontWeight: '600', color: Colors.textSecondary },
   filterTextActive: { color: Colors.white },
+  emptyState: { alignItems: 'center', paddingTop: Spacing.xxl * 2, paddingHorizontal: Spacing.xl },
+  emptyTitle: { fontFamily: FontFamily.serif, fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginTop: Spacing.lg, marginBottom: Spacing.sm },
+  emptySubtitle: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
   groupSection: { paddingHorizontal: Spacing.xl },
   groupTitle: { fontFamily: FontFamily.serif, fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
   groupSubtitle: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.lg },

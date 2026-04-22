@@ -1,15 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, Radii, FontFamily } from '../constants/Theme';
 import { ModulesStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { saveModuleProgress } from '../services/firebase/firestore';
+import { useUserStore } from '../store/useUserStore';
+import { useJournalStore } from '../store/useJournalStore';
+import type { ModuleProgress } from '../types';
 
 type Props = NativeStackScreenProps<ModulesStackParamList, 'ModuleSave'>;
 
-export const ModuleSaveScreen: React.FC<Props> = ({ navigation }) => {
+export const ModuleSaveScreen: React.FC<Props> = ({ navigation, route }) => {
   const [actionText, setActionText] = useState('');
+  const uid = useUserStore((s) => s.uid);
+  const { updateModuleProgress } = useJournalStore();
+  const { moduleId } = route.params;
+
+  useEffect(() => {
+    const progress: ModuleProgress = { moduleId, currentStep: 3, totalSteps: 3 };
+    updateModuleProgress(progress);
+    if (uid) {
+      saveModuleProgress(uid, progress).catch(() => { /* fail silently */ });
+    }
+  }, [moduleId, uid, updateModuleProgress]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

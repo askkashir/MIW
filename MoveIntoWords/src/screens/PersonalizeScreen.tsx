@@ -9,16 +9,17 @@ import Button from '../components/Button';
 import { useUserStore } from '../store/useUserStore';
 
 const MODULES = [
-  { id: 'love', label: 'Love', icon: 'heart', color: '#D21A5F' },
-  { id: 'relationships', label: 'Relationships', icon: 'people', color: '#3A74D4' },
-  { id: 'career', label: 'Career', icon: 'briefcase', color: '#D43E3A' },
-  { id: 'development', label: 'Development', icon: 'business', color: '#6A87A6' },
-  { id: 'finance', label: 'Finance', icon: 'cash', color: '#27AE60' },
-  { id: 'wellness', label: 'Wellness', icon: 'star', color: '#F2C94C' },
+  { id: 'love',          label: 'Love',          icon: 'heart',    color: '#D21A5F' },
+  { id: 'relationships', label: 'Relationships', icon: 'people',   color: '#3A74D4' },
+  { id: 'career',        label: 'Career',        icon: 'briefcase', color: '#D43E3A' },
+  { id: 'development',   label: 'Development',   icon: 'business', color: '#6A87A6' },
+  { id: 'finance',       label: 'Finance',       icon: 'cash',     color: '#27AE60' },
+  { id: 'wellness',      label: 'Wellness',      icon: 'star',     color: '#F2C94C' },
 ];
 
 const AGE_RANGES = ['18 – 24', '25 – 29', '30 – 35'];
 const GENDERS = ['Man', 'Women', 'Prefer not to say'];
+const MIN_TOPICS = 3;
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Personalize'>;
 
@@ -27,8 +28,11 @@ export const PersonalizeScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedAge, setSelectedAge] = useState<string | null>('18 - 24');
   const [selectedGender, setSelectedGender] = useState<string | null>('Women');
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
+  const [topicError, setTopicError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const toggleModule = (id: string) => {
+    setTopicError(null);
     setSelectedModules((prev) => {
       if (prev.includes(id)) return prev.filter((m) => m !== id);
       if (prev.length >= 3) return prev;
@@ -37,6 +41,10 @@ export const PersonalizeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleContinue = () => {
+    if (selectedModules.length < MIN_TOPICS) {
+      setTopicError(`Please select at least ${MIN_TOPICS} topics to continue`);
+      return;
+    }
     setPreferences({ ageRange: selectedAge, gender: selectedGender, topics: selectedModules });
     navigation.navigate('Ritual');
   };
@@ -77,10 +85,10 @@ export const PersonalizeScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.card}>
           <Text style={[styles.cardTitle, { fontFamily: FontFamily.serif, fontSize: 18 }]}>Where would you like to begin?</Text>
-          <Text style={styles.cardSubtitle}>Select upto 3 to shape up your experience.</Text>
+          <Text style={styles.cardSubtitle}>Select at least 3 to shape your experience.</Text>
 
           <View style={styles.modulesGrid}>
-            {MODULES.map((mod) => {
+            {(showAll ? MODULES : MODULES.slice(0, 6)).map((mod) => {
               const isActive = selectedModules.includes(mod.id);
               return (
                 <Pressable key={mod.id} onPress={() => toggleModule(mod.id)} style={[styles.moduleBtn, isActive && styles.moduleBtnActive]}>
@@ -91,9 +99,11 @@ export const PersonalizeScreen: React.FC<Props> = ({ navigation }) => {
             })}
           </View>
 
-          <Pressable style={styles.showAllBtn}>
-            <Text style={styles.showAllText}>Show all 18 modules</Text>
-            <Ionicons name="chevron-down" size={16} color={Colors.textPrimary} />
+          {topicError && <Text style={styles.topicError}>{topicError}</Text>}
+
+          <Pressable style={styles.showAllBtn} onPress={() => setShowAll((v) => !v)}>
+            <Text style={styles.showAllText}>{showAll ? 'Show less' : 'Show all'}</Text>
+            <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textPrimary} />
           </Pressable>
         </View>
       </ScrollView>
@@ -129,6 +139,7 @@ const styles = StyleSheet.create({
   moduleBtn: { flexDirection: 'row', alignItems: 'center', width: '48%', paddingVertical: Spacing.sm, paddingHorizontal: Spacing.sm, borderRadius: Radii.sm, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.white, marginBottom: Spacing.xs, gap: Spacing.sm },
   moduleBtnActive: { borderColor: Colors.primaryDark, backgroundColor: '#F7EFF1' },
   moduleText: { ...Typography.caption, fontWeight: '600', color: Colors.textPrimary },
+  topicError: { ...Typography.caption, color: Colors.error, marginTop: Spacing.sm, textAlign: 'center' },
   showAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: Spacing.lg, gap: Spacing.xs },
   showAllText: { ...Typography.caption, color: Colors.textPrimary },
   footer: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg, paddingBottom: Spacing.xxl },

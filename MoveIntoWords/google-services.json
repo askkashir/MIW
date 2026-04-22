@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "16528285265",
+    "project_id": "moveintowords-a81c0",
+    "storage_bucket": "moveintowords-a81c0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:16528285265:android:763841a77a440b4a69e270",
+        "android_client_info": {
+          "package_name": "com.moveintowords.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "16528285265-m38o8h0nqa1vl1m81cfcsl58q9bpvc14.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxEtscvpX2VsigTFWpDxcTlZnEIEvjmHA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "16528285265-m38o8h0nqa1vl1m81cfcsl58q9bpvc14.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "16528285265-4irm38j60h3i6lhg5knl1pe3qgdk7fqi.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.moveintowords.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

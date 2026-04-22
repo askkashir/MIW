@@ -3,9 +3,6 @@
  *
  * Each interface maps a screen name to its route params.
  * `undefined` means the screen takes no params.
- *
- * When Firebase is integrated, pass user/session data as
- * navigate() params where needed.
  */
 
 // ── Auth flow (linear stack before the user reaches the main app) ─────────────
@@ -16,9 +13,12 @@ export type AuthStackParamList = {
   SignIn: undefined;
   SignUpEmail: undefined;
   Verification: undefined;
+  ForgotPassword: undefined;
   Disclaimer: undefined;
+  LegalAgreement: undefined;
   Personalize: undefined;
   Ritual: undefined;
+  FirstPrompt: undefined;
   /** Sentinel screen that renders MainTabs — never navigated to by name from screens */
   Main: undefined;
 };
@@ -37,29 +37,32 @@ export type MainTabParamList = {
 export type ModulesStackParamList = {
   ModulesHome: undefined;
   ModuleDetail: undefined;
-  ModuleWrite: undefined;
-  ModuleDeepen: undefined;
-  ModuleSave: undefined;
+  ModuleWrite: { moduleId?: string };
+  ModuleDeepen: { moduleId: string; content?: string };
+  ModuleSave: { moduleId: string; content?: string; deepenContent?: string };
 };
 
 // ── Journal nested stack (modal) ──────────────────────────────────────────────
 export type JournalStackParamList = {
   JournalWrite: undefined;
-  JournalDeepen: undefined;
-  JournalReflect: undefined;
-  JournalSave: undefined;
+  JournalDeepen: { content?: string };
+  JournalReflect: { content?: string; deepenContent?: string };
+  JournalSave: { content?: string; deepenContent?: string; reflectContent?: string };
 };
 
 // ── Journey nested stack ──────────────────────────────────────────────────────
 export type JourneyStackParamList = {
   JourneyHome: undefined;
   EntryArchive: undefined;
+  EntryDetail: { entryId: string };
 };
 
 // ── More nested stack ─────────────────────────────────────────────────────────
 export type MoreStackParamList = {
   MoreHome: undefined;
   MemberPerks: undefined;
+  CrisisResources: undefined;
+  EditProfile: undefined;
 };
 
 // ── Domain models ─────────────────────────────────────────────────────────────
@@ -91,4 +94,18 @@ export interface UserPreferences {
 export interface UserRitual {
   timeOfDay: string;
   remindersEnabled: boolean;
+}
+
+/** Full user profile stored in Firestore at /users/{uid} */
+export interface UserProfile {
+  displayName: string;
+  email: string;
+  demographics: {
+    ageRange: string | null;
+    gender: string | null;
+  };
+  preferences: string[];
+  ritual: UserRitual;
+  onboardingComplete: boolean;
+  createdAt: unknown; // Firestore Timestamp (server-generated)
 }

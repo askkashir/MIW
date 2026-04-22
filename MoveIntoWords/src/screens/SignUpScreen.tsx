@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,13 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, FontFamily } from '../constants/Theme';
 import { AuthStackParamList } from '../types';
 import SocialButton from '../components/SocialButton';
-import { signInWithGoogle, signInWithApple } from '../services/firebase/auth';
+import {
+  signInWithGoogle,
+  signInWithApple,
+  getAuthErrorMessage,
+} from '../services/firebase/auth';
+import { getUserProfile } from '../services/firebase/firestore';
+import { useUserStore } from '../store/useUserStore';
 
 const MIW_LOGO = require('../../assets/miw-logo.png');
 
@@ -22,6 +28,46 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const logoWidth = width * 0.5;
   const logoHeight = logoWidth * 0.45;
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const routeAfterSignIn = async (uid: string, displayName: string, email: string) => {
+    const { setUser, setOnboardingComplete } = useUserStore.getState();
+    setUser({ uid, displayName, email });
+    const profile = await getUserProfile(uid);
+    if (profile?.onboardingComplete) {
+      setOnboardingComplete(true);
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+    } else {
+      navigation.navigate('Disclaimer');
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const user = await signInWithGoogle();
+      await routeAfterSignIn(user.uid, user.displayName ?? '', user.email ?? '');
+    } catch (err) {
+      setError(getAuthErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApple = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const user = await signInWithApple();
+      await routeAfterSignIn(user.uid, user.displayName ?? '', user.email ?? '');
+    } catch (err) {
+      setError(getAuthErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -41,6 +87,8 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
         </View>
 
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
         <SocialButton
           type="email"
           title="Continue With Email"
@@ -52,14 +100,14 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
           type="apple"
           title="Continue With Apple"
           icon=""
-          onPress={signInWithApple}
+          onPress={handleApple}
           style={styles.socialBtn}
         />
         <SocialButton
           type="google"
-          title="Continue With Google"
+          title={isLoading ? 'Signing in...' : 'Continue With Google'}
           icon="G"
-          onPress={signInWithGoogle}
+          onPress={handleGoogle}
         />
 
         <View style={styles.footer}>
@@ -76,55 +124,16 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
 export default SignUpScreen;
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xxl + Spacing.lg,
-  },
-  logoWrapper: {
-    alignItems: 'center',
-    marginBottom: Spacing.xxl,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: Spacing.xxl,
-  },
-  title: {
-    fontFamily: FontFamily.serif,
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  actionBtn: {
-    marginBottom: Spacing.lg,
-  },
-  socialBtn: {
-    marginBottom: Spacing.md,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 'auto',
-    marginBottom: Spacing.xl,
-  },
-  footerText: {
-    ...Typography.body,
-    color: Colors.textPrimary,
-  },
-  footerLink: {
-    ...Typography.body,
-    color: Colors.textPrimary,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
+  safe: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, paddingHorizontal: Spacing.xl, paddingTop: Spacing.xxl + Spacing.lg },
+  logoWrapper: { alignItems: 'center', marginBottom: Spacing.xxl },
+  header: { alignItems: 'center', marginBottom: Spacing.xxl },
+  title: { fontFamily: FontFamily.serif, fontSize: 28, fontWeight: '700', color: Colors.textPrimary, marginBottom: Spacing.xs },
+  subtitle: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center' },
+  errorText: { ...Typography.caption, color: Colors.error, textAlign: 'center', marginBottom: Spacing.md },
+  actionBtn: { marginBottom: Spacing.lg },
+  socialBtn: { marginBottom: Spacing.md },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 'auto', marginBottom: Spacing.xl },
+  footerText: { ...Typography.body, color: Colors.textPrimary },
+  footerLink: { ...Typography.body, color: Colors.textPrimary, fontWeight: '600', textDecorationLine: 'underline' },
 });

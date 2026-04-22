@@ -1,13 +1,8 @@
 /**
  * useUserStore — Global user profile state.
  *
- * All fields start as null/empty. Firebase Auth will populate `uid`,
- * `displayName`, and `email` on sign-in via src/services/firebase/auth.ts.
- * Preferences and ritual are saved locally during onboarding and will
- * eventually be persisted to Firestore via src/services/firebase/firestore.ts.
- *
- * TODO (Firebase): Call setUser() inside the onAuthStateChanged listener
- * once Firebase Auth is wired up.
+ * Fields are populated via getUserProfile() when the auth state changes.
+ * Cleared on signOut().
  */
 
 import { create } from 'zustand';
@@ -24,11 +19,14 @@ interface UserState {
   preferences: UserPreferences;
   /** Journaling ritual chosen during Ritual screen */
   ritual: UserRitual;
+  /** Whether the user has completed all onboarding steps */
+  onboardingComplete: boolean;
 
   // ── Actions ──────────────────────────────────────────
   setUser: (data: { uid: string; displayName: string; email: string }) => void;
   setPreferences: (prefs: Partial<UserPreferences>) => void;
   setRitual: (ritual: Partial<UserRitual>) => void;
+  setOnboardingComplete: (complete: boolean) => void;
   clearUser: () => void;
 }
 
@@ -49,6 +47,7 @@ export const useUserStore = create<UserState>((set) => ({
   email: null,
   preferences: DEFAULT_PREFERENCES,
   ritual: DEFAULT_RITUAL,
+  onboardingComplete: false,
 
   setUser: ({ uid, displayName, email }) =>
     set({ uid, displayName, email }),
@@ -63,6 +62,9 @@ export const useUserStore = create<UserState>((set) => ({
       ritual: { ...state.ritual, ...ritual },
     })),
 
+  setOnboardingComplete: (complete) =>
+    set({ onboardingComplete: complete }),
+
   clearUser: () =>
     set({
       uid: null,
@@ -70,5 +72,6 @@ export const useUserStore = create<UserState>((set) => ({
       email: null,
       preferences: DEFAULT_PREFERENCES,
       ritual: DEFAULT_RITUAL,
+      onboardingComplete: false,
     }),
 }));

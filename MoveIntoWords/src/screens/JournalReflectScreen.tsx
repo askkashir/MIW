@@ -11,13 +11,16 @@ const JOURNAL_ENTRY = "Right now, I'm juggling a few deadlines at once and tryin
 
 type Props = NativeStackScreenProps<JournalStackParamList, 'JournalReflect'>;
 
-const JournalReflectScreen: React.FC<Props> = ({ navigation }) => {
+const JournalReflectScreen: React.FC<Props> = ({ navigation, route }) => {
   const [selectedTone, setSelectedTone] = useState('Clarity');
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <JournalProgress currentStep={3} totalSteps={4} activeColor={Colors.journalBlue} inactiveColor={Colors.journalBlueLight} />
+          <TouchableOpacity style={styles.crisisLink} onPress={() => (navigation as any).navigate('CrisisResources')}>
+            <Text style={styles.crisisLinkText}>Crisis Resources</Text>
+          </TouchableOpacity>
           <View style={styles.titleContainer}>
             <View style={styles.iconCircle}><Text style={styles.iconText}>🧭</Text></View>
             <Text style={[Typography.h1, styles.title]}>Reflect</Text>
@@ -49,10 +52,10 @@ const JournalReflectScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </ScrollView>
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.navigate('JournalSave')}>
+        <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.navigate('JournalSave', { content: route.params?.content, deepenContent: route.params?.deepenContent, reflectContent: selectedTone })}>
           <Text style={[Typography.button, styles.ctaButtonText]}>Save & Create My Space</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.skipButton} onPress={() => navigation.navigate('JournalSave')}>
+        <TouchableOpacity style={styles.skipButton} onPress={() => navigation.navigate('JournalSave', { content: route.params?.content, deepenContent: route.params?.deepenContent })}>
           <Text style={[Typography.button, styles.skipButtonText]}>Save & Skip</Text>
         </TouchableOpacity>
       </View>
@@ -64,6 +67,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   scrollContainer: { flexGrow: 1, paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xl },
   header: { alignItems: 'center', paddingTop: Spacing.lg },
+  crisisLink: { alignSelf: 'flex-end', marginTop: Spacing.xs },
+  crisisLinkText: { ...Typography.caption, color: Colors.textSecondary, fontSize: 11 },
   titleContainer: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.md, gap: Spacing.xs },
   iconCircle: { width: 32, height: 32, borderRadius: Radii.full, backgroundColor: Colors.journalBlueLight, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 16 },
