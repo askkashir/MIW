@@ -5,8 +5,7 @@ import {
   StyleSheet,
   FlatList,
   useWindowDimensions,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
+  ViewToken,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -63,15 +62,23 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList<SlideData>>(null);
-
-  const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const index = Math.round(e.nativeEvent.contentOffset.x / width);
-    setCurrentIndex(index);
-  };
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+  }).current;
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken<SlideData>[] }) => {
+      const visibleIndex = viewableItems[0]?.index;
+      if (typeof visibleIndex === 'number') {
+        setCurrentIndex(visibleIndex);
+      }
+    },
+  ).current;
 
   const handleGetStarted = () => {
     if (currentIndex < SLIDES.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+      const nextIndex = currentIndex + 1;
+      setCurrentIndex(nextIndex);
+      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
     } else {
       navigation.navigate('SignUp');
     }
@@ -118,7 +125,11 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         bounces={false}
-        onMomentumScrollEnd={onMomentumScrollEnd}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        onScrollToIndexFailed={({ index }) => {
+          flatListRef.current?.scrollToOffset({ offset: index * width, animated: true });
+        }}
       />
       <View style={styles.buttonWrapper}>
         <Button label="Get Started" onPress={handleGetStarted} />

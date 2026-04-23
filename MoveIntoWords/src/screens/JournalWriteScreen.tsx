@@ -13,7 +13,13 @@ type Props = NativeStackScreenProps<JournalStackParamList, 'JournalWrite'>;
 
 const JournalWriteScreen: React.FC<Props> = ({ navigation }) => {
   const [text, setText] = useState('');
+  const textRef = useRef(text);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Keep ref synced with latest text
+  useEffect(() => {
+    textRef.current = text;
+  }, [text]);
 
   // Restore draft on mount
   useEffect(() => {
@@ -25,42 +31,60 @@ const JournalWriteScreen: React.FC<Props> = ({ navigation }) => {
   // Auto-save draft every 30 seconds
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      AsyncStorage.setItem(DRAFT_KEY, text);
+      AsyncStorage.setItem(DRAFT_KEY, textRef.current);
     }, 30000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      AsyncStorage.removeItem(DRAFT_KEY);
     };
-  }, [text]);
+  }, []);
+
+  const content = (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={styles.header}>
+        <JournalProgress currentStep={1} totalSteps={4} activeColor={Colors.primary} inactiveColor={Colors.dotInactive} />
+        <TouchableOpacity style={styles.crisisLink} onPress={() => (navigation as any).navigate('CrisisResources')}>
+          <Text style={styles.crisisText}>Crisis Resources</Text>
+        </TouchableOpacity>
+        <View style={styles.titleContainer}>
+          <View style={styles.iconCircle}><Text style={styles.iconText}>✍️</Text></View>
+          <Text style={[Typography.h1, styles.title]}>Write</Text>
+        </View>
+      </View>
+      <View style={styles.content}>
+        <Text style={[Typography.body, styles.prompt]}>What's taking up the most mental space for you right now?</Text>
+        <TextInput
+          style={[Typography.body, styles.input]}
+          placeholder="Start typing..."
+          placeholderTextColor={Colors.textPlaceholder}
+          multiline
+          autoFocus={true}
+          value={text}
+          onChangeText={setText}
+          textAlignVertical="top"
+        />
+      </View>
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.ctaButton, !text.trim() && { opacity: 0.5 }]}
+          onPress={() => navigation.navigate('JournalDeepen', { content: text })}
+          disabled={!text.trim()}
+        >
+          <Text style={[Typography.button, styles.ctaButtonText]}>Next</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.skipButton} onPress={() => navigation.goBack()}>
+          <Text style={[Typography.button, styles.skipButtonText]}>Skip for now</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.header}>
-            <JournalProgress currentStep={1} totalSteps={4} activeColor={Colors.primary} inactiveColor={Colors.dotInactive} />
-            <TouchableOpacity style={styles.crisisLink} onPress={() => (navigation as any).navigate('CrisisResources')}>
-              <Text style={styles.crisisText}>Crisis Resources</Text>
-            </TouchableOpacity>
-            <View style={styles.titleContainer}>
-              <View style={styles.iconCircle}><Text style={styles.iconText}>✍️</Text></View>
-              <Text style={[Typography.h1, styles.title]}>Write</Text>
-            </View>
-          </View>
-          <View style={styles.content}>
-            <Text style={[Typography.body, styles.prompt]}>What's taking up the most mental space for you right now?</Text>
-            <TextInput style={[Typography.body, styles.input]} placeholder="Start typing..." placeholderTextColor={Colors.textPlaceholder} multiline autoFocus={false} value={text} onChangeText={setText} textAlignVertical="top" />
-          </View>
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.navigate('JournalDeepen', { content: text })}>
-              <Text style={[Typography.button, styles.ctaButtonText]}>Start Writing</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.skipButton} onPress={() => navigation.goBack()}>
-              <Text style={[Typography.button, styles.skipButtonText]}>Skip for now</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      {Platform.OS === 'web' ? content : (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          {content}
+        </TouchableWithoutFeedback>
+      )}
     </SafeAreaView>
   );
 };

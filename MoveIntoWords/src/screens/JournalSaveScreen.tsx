@@ -17,7 +17,10 @@ const JournalSaveScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   const uid = useUserStore((s) => s.uid);
+  const userDisplayName = useUserStore((s) => s.displayName);
   const { addEntry } = useJournalStore();
+
+  const isFirstEntry = !userDisplayName || userDisplayName === '';
 
   const handleSave = async () => {
     const { content = '', deepenContent = '', reflectContent = '' } = route.params ?? {};
@@ -32,57 +35,111 @@ const JournalSaveScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       if (uid) {
         await saveJournalEntry(uid, entry);
+        if (isFirstEntry && firstName.trim()) {
+          const { doc, updateDoc } = require('firebase/firestore');
+          const { db } = require('../services/firebase/config');
+          await updateDoc(doc(db, 'users', uid), { 
+            displayName: firstName.trim(),
+            onboardingComplete: true // Mark onboarding as complete if they finish this flow
+          });
+          const userStore = useUserStore.getState();
+          userStore.setUser({ 
+            uid: userStore.uid!, 
+            email: userStore.email!, 
+            displayName: firstName.trim() 
+          });
+          userStore.setOnboardingComplete(true);
+        }
       }
       addEntry(entry);
+      // Clear draft upon successful save
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.removeItem('journal_draft').catch(() => {});
     } catch {
       // Fail silently — entry is still in local store
     } finally {
       setIsSaving(false);
     }
+    // If it was a modal from MainTabs, just go back
     navigation.getParent()?.goBack();
   };
 
+  const content = (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <JournalProgress currentStep={4} totalSteps={4} activeColor={Colors.journalGreen} inactiveColor={Colors.journalGreenLight} />
+          <View style={styles.titleContainer}>
+            <View style={styles.iconCircle}><Text style={styles.iconText}>📓</Text></View>
+            <Text style={[Typography.h1, styles.title]}>{isFirstEntry ? 'Save' : 'Complete'}</Text>
+          </View>
+        </View>
+        <View style={styles.content}>
+          <View style={styles.card}>
+            <Text style={[Typography.h3, styles.cardTitle]}>
+              {isFirstEntry ? 'Your first entry is waiting.' : 'Another step forward.'}
+            </Text>
+            <Text style={[Typography.body, styles.cardSubtitle]}>
+              {isFirstEntry ? "Let's give it a home." : "Your reflection has been captured."}
+            </Text>
+            
+            {isFirstEntry && (
+              <View style={styles.avatarSection}>
+                <View style={styles.avatarContainer}>
+                  <View style={styles.avatarCircle}><Text style={styles.avatarIcon}>🌿</Text></View>
+                  <View style={styles.cameraIconContainer}><Text style={styles.cameraIcon}>📷</Text></View>
+                </View>
+                <Text style={[Typography.body, styles.chooseAvatarText]}>Choose an avatar</Text>
+              </View>
+            )}
+          </View>
+
+          {isFirstEntry && (
+            <View style={styles.formSection}>
+              <Text style={[Typography.h3, styles.formTitle]}>What should we call you?</Text>
+              <Text style={[Typography.body, styles.formSubtitle]}>This is how your space will greet you</Text>
+              <TextInput 
+                style={[Typography.body, styles.input]} 
+                placeholder="First Name" 
+                placeholderTextColor={Colors.textPlaceholder} 
+                value={firstName} 
+                onChangeText={setFirstName} 
+                autoFocus={true}
+              />
+            </View>
+          )}
+
+          {!isFirstEntry && (
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryText}>You've successfully completed today's reflection ritual. Great job checking in with yourself.</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={[styles.ctaButton, isFirstEntry && !firstName.trim() && { opacity: 0.5 }]} 
+          onPress={handleSave} 
+          disabled={isSaving || (isFirstEntry && !firstName.trim())}
+        >
+          <Text style={[Typography.button, styles.ctaButtonText]}>
+            {isSaving ? 'Saving...' : (isFirstEntry ? 'Begin My Journey' : 'Finish')}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={[Typography.button, styles.backButtonText]}>← Back</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-            <View style={styles.header}>
-              <JournalProgress currentStep={4} totalSteps={4} activeColor={Colors.journalGreen} inactiveColor={Colors.journalGreenLight} />
-              <View style={styles.titleContainer}>
-                <View style={styles.iconCircle}><Text style={styles.iconText}>📓</Text></View>
-                <Text style={[Typography.h1, styles.title]}>Save</Text>
-              </View>
-            </View>
-            <View style={styles.content}>
-              <View style={styles.card}>
-                <Text style={[Typography.h3, styles.cardTitle]}>Your first entry is waiting.</Text>
-                <Text style={[Typography.body, styles.cardSubtitle]}>Let's give it a home.</Text>
-                <View style={styles.avatarSection}>
-                  <View style={styles.avatarContainer}>
-                    <View style={styles.avatarCircle}><Text style={styles.avatarIcon}>🌿</Text></View>
-                    <View style={styles.cameraIconContainer}><Text style={styles.cameraIcon}>📷</Text></View>
-                  </View>
-                  <Text style={[Typography.body, styles.chooseAvatarText]}>Choose an avatar</Text>
-                </View>
-              </View>
-              <View style={styles.formSection}>
-                <Text style={[Typography.h3, styles.formTitle]}>What should we call you?</Text>
-                <Text style={[Typography.body, styles.formSubtitle]}>This is how your space will greet you</Text>
-                <TextInput style={[Typography.body, styles.input]} placeholder="First Name" placeholderTextColor={Colors.textPlaceholder} value={firstName} onChangeText={setFirstName} />
-              </View>
-            </View>
-          </ScrollView>
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.ctaButton} onPress={handleSave} disabled={isSaving}>
-              <Text style={[Typography.button, styles.ctaButtonText]}>{isSaving ? 'Saving...' : 'Continue'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Text style={[Typography.button, styles.backButtonText]}>← Back</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      {Platform.OS === 'web' ? content : (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          {content}
+        </TouchableWithoutFeedback>
+      )}
     </SafeAreaView>
   );
 };
@@ -111,6 +168,8 @@ const styles = StyleSheet.create({
   formTitle: { fontWeight: '700', color: Colors.black, marginBottom: Spacing.xxs },
   formSubtitle: { color: Colors.textSecondary, fontSize: 14, marginBottom: Spacing.md },
   input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radii.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2, color: Colors.textPrimary },
+  summaryBox: { padding: Spacing.lg, backgroundColor: '#F9FBF9', borderRadius: Radii.md, borderWidth: 1, borderColor: '#E8F2E8' },
+  summaryText: { ...Typography.body, color: Colors.textSecondary, fontStyle: 'italic', textAlign: 'center' },
   footer: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.lg, backgroundColor: Colors.background, gap: Spacing.md },
   ctaButton: { backgroundColor: Colors.journalGreen, paddingVertical: Spacing.md, borderRadius: Radii.full, alignItems: 'center' },
   ctaButtonText: { color: Colors.white },

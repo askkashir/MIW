@@ -6,14 +6,15 @@
  * omits the import and configure call entirely.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthStack } from './src/navigation/AuthStack';
 import { listenToAuthState, getUserProfile } from './src/services/firebase';
 import { useUserStore } from './src/store/useUserStore';
+import { useJournalStore } from './src/store/useJournalStore';
 import { Colors } from './src/constants/Theme';
 import type { AuthStackParamList } from './src/types';
 
@@ -23,43 +24,68 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] =
     useState<keyof AuthStackParamList>('Splash');
+  const navigationRef = useRef<NavigationContainerRef<AuthStackParamList>>(null);
 
   useEffect(() => {
     const unsubscribe = listenToAuthState(async (user) => {
       try {
         if (!user) {
+          // Clear local stores on sign out
+          useUserStore.getState().clearUser();
+          useJournalStore.getState().clearAll();
+
           const hasOpened = await AsyncStorage.getItem(HAS_OPENED_KEY);
           if (!hasOpened) {
             await AsyncStorage.setItem(HAS_OPENED_KEY, 'true');
-            setInitialRoute('Splash');
+            if (isLoading) {
+              setInitialRoute('Splash');
+            } else {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'Splash' }] });
+            }
           } else {
-            setInitialRoute('SignIn');
+            if (isLoading) {
+              setInitialRoute('SignIn');
+            } else {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+            }
           }
         } else {
           const { setUser, setOnboardingComplete } = useUserStore.getState();
+          const profile = await getUserProfile(user.uid);
           setUser({
             uid: user.uid,
-            displayName: user.displayName ?? '',
-            email: user.email ?? '',
+            displayName: profile?.displayName ?? user.displayName ?? '',
+            email: profile?.email ?? user.email ?? '',
           });
-
-          const profile = await getUserProfile(user.uid);
+          
           if (profile && profile.onboardingComplete) {
             setOnboardingComplete(true);
-            setInitialRoute('Main');
+            if (isLoading) {
+              setInitialRoute('Main');
+            } else {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'Main' }] });
+            }
           } else {
-            setInitialRoute('Disclaimer');
+            if (isLoading) {
+              setInitialRoute('Disclaimer');
+            } else {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'Disclaimer' }] });
+            }
           }
         }
       } catch {
-        setInitialRoute('SignIn');
+        if (isLoading) {
+          setInitialRoute('SignIn');
+        } else {
+          navigationRef.current?.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+        }
       } finally {
         setIsLoading(false);
       }
     });
 
     return unsubscribe;
-  }, []);
+  }, [isLoading]);
 
   if (isLoading) {
     return (
@@ -71,7 +97,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <AuthStack initialRouteName={initialRoute} />
       </NavigationContainer>
     </SafeAreaProvider>

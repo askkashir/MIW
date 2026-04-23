@@ -36,10 +36,10 @@ export type MainTabParamList = {
 // ── Modules nested stack ──────────────────────────────────────────────────────
 export type ModulesStackParamList = {
   ModulesHome: undefined;
-  ModuleDetail: undefined;
-  ModuleWrite: { moduleId?: string };
-  ModuleDeepen: { moduleId: string; content?: string };
-  ModuleSave: { moduleId: string; content?: string; deepenContent?: string };
+  ModuleDetail: { moduleId: string };
+  ModuleWrite: { moduleId: string };
+  ModuleDeepen: { moduleId: string; step1Response: string };
+  ModuleSave: { moduleId: string; step1Response: string; step2Response: string };
 };
 
 // ── Journal nested stack (modal) ──────────────────────────────────────────────
@@ -63,6 +63,10 @@ export type MoreStackParamList = {
   MemberPerks: undefined;
   CrisisResources: undefined;
   EditProfile: undefined;
+  ReminderSettings: undefined;
+  ThemeSettings: undefined;
+  FontSizeSettings: undefined;
+  Help: undefined;
 };
 
 // ── Domain models ─────────────────────────────────────────────────────────────
@@ -79,8 +83,20 @@ export interface JournalEntry {
 /** Progress record for a guided module */
 export interface ModuleProgress {
   moduleId: string;
+  /** 0 = not started, 1 = on step 1, 2 = on step 2, 3 = complete */
   currentStep: number;
   totalSteps: number;
+  isComplete: boolean;
+  /** Responses keyed by step number as string: "1", "2", "3" */
+  responses: {
+    [step: string]: string;
+  };
+  /** Unix ms timestamp when the module was first started */
+  startedAt: number;
+  /** Unix ms timestamp when the module was completed — only set when isComplete = true */
+  completedAt?: number;
+  /** Unix ms timestamp of last update */
+  lastUpdatedAt: number;
 }
 
 /** User preferences collected during onboarding */

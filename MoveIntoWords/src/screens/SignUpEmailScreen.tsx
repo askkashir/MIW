@@ -8,6 +8,7 @@ import TextInput from '../components/TextInput';
 import AuthProgress from '../components/AuthProgress';
 import BottomAction from '../components/BottomAction';
 import { signUpWithEmail, getAuthErrorMessage } from '../services/firebase/auth';
+import { Ionicons } from '@expo/vector-icons';
 
 const PASSWORD_RULES = [
   'Minimum 8 Characters',
@@ -25,6 +26,17 @@ const SignUpEmailScreen: React.FC<Props> = ({ navigation }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const hasMinLength = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const isPasswordValid =
+    hasMinLength &&
+    hasUppercase &&
+    hasLowercase &&
+    hasSymbol &&
+    password === confirmPassword;
+
   const handleNext = async () => {
     setError(null);
 
@@ -32,14 +44,7 @@ const SignUpEmailScreen: React.FC<Props> = ({ navigation }) => {
       setError('Please enter your email address');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+    if (!isPasswordValid) return;
 
     setIsLoading(true);
     try {
@@ -93,20 +98,32 @@ const SignUpEmailScreen: React.FC<Props> = ({ navigation }) => {
         />
 
         <View style={styles.checklist}>
-          {PASSWORD_RULES.map((rule) => (
+          {PASSWORD_RULES.map((rule, i) => {
+            const isMet =
+              i === 0 ? hasMinLength :
+              i === 1 ? hasUppercase :
+              i === 2 ? hasLowercase :
+              hasSymbol;
+            const iconColor = isMet ? Colors.primary : Colors.textSecondary;
+            return (
             <View key={rule} style={styles.checkRow}>
               <View style={styles.checkCircle}>
-                <Text style={styles.checkIcon}>✓</Text>
+                <Ionicons
+                  name={isMet ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={16}
+                  color={iconColor}
+                />
               </View>
               <Text style={styles.checkText}>{rule}</Text>
             </View>
-          ))}
+          );})}
         </View>
       </ScrollView>
 
       <BottomAction
         onBack={() => navigation.goBack()}
         onNext={handleNext}
+        nextDisabled={!email.trim() || !isPasswordValid || isLoading}
       />
     </SafeAreaView>
   );

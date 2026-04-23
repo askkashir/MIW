@@ -30,3 +30,7 @@ export { default as MoreScreen } from './MoreScreen';
 export { default as MemberPerksScreen } from './MemberPerksScreen';
 export { default as CrisisResourcesScreen } from './CrisisResourcesScreen';
 export { default as EditProfileScreen } from './EditProfileScreen';
+export { default as ReminderSettingsScreen } from './ReminderSettingsScreen';
+export { default as ThemeSettingsScreen } from './ThemeSettingsScreen';
+export { default as FontSizeSettingsScreen } from './FontSizeSettingsScreen';
+export { default as HelpScreen } from './HelpScreen';

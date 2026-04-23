@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -19,6 +19,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] =
     useState<keyof AuthStackParamList>('Splash');
+  const navigationRef = useRef<NavigationContainerRef<AuthStackParamList>>(null);
 
   useEffect(() => {
     // Configure Google Sign-In — only works in native dev builds, not Expo Go
@@ -43,26 +44,41 @@ export default function App() {
           const hasOpened = await AsyncStorage.getItem(HAS_OPENED_KEY);
           if (!hasOpened) {
             await AsyncStorage.setItem(HAS_OPENED_KEY, 'true');
-            setInitialRoute('Splash');
+            if (isLoading) {
+              setInitialRoute('Splash');
+            } else {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'Splash' }] });
+            }
           } else {
-            setInitialRoute('SignIn');
+            if (isLoading) {
+              setInitialRoute('SignIn');
+            } else {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+            }
           }
         } else {
           // ── Signed-in user — check profile ──────────────────
           const { setUser, setOnboardingComplete } = useUserStore.getState();
+          const profile = await getUserProfile(user.uid);
           setUser({
             uid: user.uid,
-            displayName: user.displayName ?? '',
-            email: user.email ?? '',
+            displayName: profile?.displayName ?? user.displayName ?? '',
+            email: profile?.email ?? user.email ?? '',
           });
-
-          const profile = await getUserProfile(user.uid);
           if (profile && profile.onboardingComplete) {
             setOnboardingComplete(true);
-            setInitialRoute('Main');
+            if (isLoading) {
+              setInitialRoute('Main');
+            } else {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'Main' }] });
+            }
           } else {
             // Profile not found or onboarding not done — resume onboarding
-            setInitialRoute('Disclaimer');
+            if (isLoading) {
+              setInitialRoute('Disclaimer');
+            } else {
+              navigationRef.current?.reset({ index: 0, routes: [{ name: 'Disclaimer' }] });
+            }
           }
 
           // Pre-load journal data into store — fail silently so auth never blocks
@@ -79,14 +95,18 @@ export default function App() {
         }
       } catch {
         // On any error, fall back to sign-in
-        setInitialRoute('SignIn');
+        if (isLoading) {
+          setInitialRoute('SignIn');
+        } else {
+          navigationRef.current?.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+        }
       } finally {
         setIsLoading(false);
       }
     });
 
     return unsubscribe;
-  }, []);
+  }, [isLoading]);
 
   if (isLoading) {
     return (
@@ -98,7 +118,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <AuthStack initialRouteName={initialRoute} />
       </NavigationContainer>
     </SafeAreaProvider>
