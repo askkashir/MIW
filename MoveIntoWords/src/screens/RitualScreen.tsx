@@ -21,12 +21,17 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Ritual'>;
 
 export const RitualScreen: React.FC<Props> = ({ navigation }) => {
   const { setRitual, preferences, displayName, email, uid } = useUserStore();
-  const [selectedTime, setSelectedTime] = useState('morning');
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleContinue = async () => {
+    if (!selectedTime) {
+      setError('Please select a time for your ritual to continue.');
+      return;
+    }
+
     setRitual({ timeOfDay: selectedTime, remindersEnabled });
 
     const firebaseUid = uid ?? getCurrentUser()?.uid;
@@ -76,17 +81,18 @@ export const RitualScreen: React.FC<Props> = ({ navigation }) => {
                   onPress={() => setSelectedTime(slot.id)}
                   style={[
                     styles.slotBtn,
-                    { backgroundColor: isSelected ? Colors.primaryDark : slot.bgColor },
-                    !isSelected && slot.id === 'morning' && { backgroundColor: '#F0F0F0' },
+                    isSelected
+                      ? styles.slotSelected
+                      : styles.slotUnselected,
                   ]}
                 >
                   <Ionicons
                     name={slot.icon as React.ComponentProps<typeof Ionicons>['name']}
                     size={20}
-                    color={isSelected ? Colors.white : slot.iconColor}
+                    color={isSelected ? Colors.white : Colors.textPrimary}
                     style={styles.slotIcon}
                   />
-                  <Text style={[styles.slotLabel, { color: isSelected ? Colors.white : slot.textColor }]}>
+                  <Text style={[styles.slotLabel, { color: isSelected ? Colors.white : Colors.textPrimary }]}>
                     {slot.label} <Text style={styles.slotSublabel}>{slot.sublabel}</Text>
                   </Text>
                 </Pressable>
@@ -116,8 +122,9 @@ export const RitualScreen: React.FC<Props> = ({ navigation }) => {
 
       <View style={styles.footer}>
         <Button
-          label={isLoading ? 'Saving...' : 'Skip for now'}
+          label={isLoading ? 'Saving...' : 'Continue'}
           onPress={handleContinue}
+          disabled={!selectedTime || isLoading}
           style={styles.continueBtn}
         />
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -139,6 +146,8 @@ const styles = StyleSheet.create({
   cardSubtitle: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.lg },
   slotsContainer: { gap: Spacing.sm },
   slotBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, borderRadius: Radii.full },
+  slotSelected: { backgroundColor: Colors.primaryDark },
+  slotUnselected: { borderWidth: 1, borderColor: Colors.textSecondary, backgroundColor: Colors.surface },
   customSlot: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border },
   slotIcon: { marginRight: Spacing.sm },
   slotLabel: { ...Typography.button, fontSize: 15 },

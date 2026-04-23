@@ -26,7 +26,12 @@ const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
     setIsLoading(true);
     try {
       await updateDoc(doc(db, 'users', uid), { displayName: name.trim() });
-      useUserStore.getState().setUser({ uid, displayName: name.trim(), email: email ?? '' });
+      const current = useUserStore.getState();
+      useUserStore.getState().setUser({
+        uid: current.uid ?? uid,
+        displayName: name.trim(),
+        email: current.email ?? email ?? '',
+      });
       navigation.goBack();
     } catch (err) {
       setError('Failed to update profile. Please try again.');

@@ -7,12 +7,16 @@ import { JournalStackParamList } from '../types';
 import JournalProgress from '../components/JournalProgress';
 
 const TONES = ['Clarity', 'Comfort', 'Insight', 'Calm'];
-const JOURNAL_ENTRY = "Right now, I'm juggling a few deadlines at once and trying not to drop any details, which takes up most of my mental space. The constant context switching makes it harder to stay grounded, and that's where boredom creeps in. The hardest part to let go of is the quiet, empty stretches where nothing feels engaging and my mind starts spiraling.";
 
 type Props = NativeStackScreenProps<JournalStackParamList, 'JournalReflect'>;
 
 const JournalReflectScreen: React.FC<Props> = ({ navigation, route }) => {
   const [selectedTone, setSelectedTone] = useState('Clarity');
+  
+  const contentToDisplay = [route.params?.content, route.params?.deepenContent]
+    .filter(Boolean)
+    .join('\n\n') || 'No entry text available.';
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
@@ -31,8 +35,8 @@ const JournalReflectScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={[Typography.body, styles.heroSubtitle]}>What you wrote holds more than you think.</Text>
           <View style={styles.card}>
             <Text style={[Typography.h3, styles.cardTitle]}>Entry 1</Text>
-            <Text style={[Typography.caption, styles.cardDate]}>Today · 7:50 PM</Text>
-            <Text style={[Typography.body, styles.cardBody]} numberOfLines={6}>{JOURNAL_ENTRY}</Text>
+            <Text style={[Typography.caption, styles.cardDate]}>Today</Text>
+            <Text style={[Typography.body, styles.cardBody]} numberOfLines={6}>{contentToDisplay}</Text>
             <TouchableOpacity hitSlop={10}><Text style={styles.readMoreText}>Read more</Text></TouchableOpacity>
           </View>
           <View style={styles.toneSection}>

@@ -7,9 +7,11 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Typography, Spacing, Radii, FontFamily } from '../constants/Theme';
 import { MainTabParamList, AuthStackParamList, JournalEntry } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useUserStore } from '../store/useUserStore';
 import { useJournalStore } from '../store/useJournalStore';
 import { getJournalEntries, getModuleProgress } from '../services/firebase/firestore';
+import { MODULES } from '../constants/modules';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Dashboard'>,
@@ -17,18 +19,37 @@ type Props = CompositeScreenProps<
 >;
 
 // ── Stat helpers ───────────────────────────────────────────────────────────────
-const toDateStr = (ts: number) => new Date(ts).toISOString().split('T')[0];
+
+/** Returns a local YYYY-MM-DD string — never uses UTC. */
+const toDateStr = (ts: number): string => {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const getGreeting = (): string => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
+};
+
+const getSubtitle = (): string => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Start your day with a few mindful moments.';
+  if (hour < 17) return 'Take a moment to reflect on your day so far.';
+  return 'Wind down and check in with yourself.';
+};
 
 const computeStreak = (entries: JournalEntry[]): number => {
   if (entries.length === 0) return 0;
   const dateSet = new Set(entries.map((e) => toDateStr(e.createdAt)));
   const today = toDateStr(Date.now());
   const yesterday = toDateStr(Date.now() - 86400000);
-  // Start from today if written today, otherwise start from yesterday
   const startDate = dateSet.has(today) ? today : yesterday;
   if (!dateSet.has(startDate)) return 0;
   let streak = 0;
-  const d = new Date(startDate + 'T00:00:00');
+  const [y, m, day] = startDate.split('-').map(Number);
+  const d = new Date(y, m - 1, day); // local midnight, no UTC ambiguity
   while (dateSet.has(toDateStr(d.getTime()))) {
     streak++;
     d.setDate(d.getDate() - 1);
@@ -65,6 +86,7 @@ const getCurrentWeekDates = (): string[] => {
 export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const { uid, displayName } = useUserStore();
   const entries = useJournalStore((s) => s.entries);
+  const moduleProgress = useJournalStore((s) => s.moduleProgress);
   const { setEntries, setModuleProgress } = useJournalStore();
 
   // Fallback fetch in case App.tsx load didn't complete before mount
@@ -84,6 +106,24 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const streak = computeStreak(entries);
   const lastEntryText = entries.length > 0 ? relativeDate(entries[0].createdAt) : 'No entries yet';
   const weekDates = getCurrentWeekDates();
+  const incompleteModules = MODULES.filter(
+    (m) => !moduleProgress.find((p) => p.moduleId === m.id)?.isComplete,
+  ).length;
+  const mostRecentIncompleteProgress = [...moduleProgress]
+    .filter((p) => !p.isComplete)
+    .sort((a, b) => b.lastUpdatedAt - a.lastUpdatedAt)[0];
+
+  let moduleActivityText = 'None started';
+  let continueModuleTitle = 'Continue a Module';
+
+  if (mostRecentIncompleteProgress) {
+    const mod = MODULES.find((m) => m.id === mostRecentIncompleteProgress.moduleId);
+    if (mod) {
+      continueModuleTitle = `Continue: ${mod.title}`;
+      moduleActivityText = `Step ${mostRecentIncompleteProgress.currentStep} of ${mostRecentIncompleteProgress.totalSteps}`;
+    }
+  }
+
   const entryDateSet = new Set(entries.map((e) => toDateStr(e.createdAt)));
 
   return (
@@ -92,7 +132,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.streakBadge}>
-            <Ionicons name="gift" size={16} color={Colors.white} />
+            <MaterialCommunityIcons name="fire" size={16} color={Colors.white} />
             <Text style={styles.streakText}>{streak}</Text>
           </View>
           <View style={styles.profilePic}>
@@ -102,15 +142,15 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Welcome */}
         <View style={styles.welcomeSection}>
-          <Text style={styles.title}>Good Morning, {firstName}.</Text>
-          <Text style={styles.subtitle}>Start your day with a few mindful moments.</Text>
+          <Text style={styles.title}>{getGreeting()}, {firstName}.</Text>
+          <Text style={styles.subtitle}>{getSubtitle()}</Text>
         </View>
 
         {/* Week Calendar */}
         <View style={styles.calendarCard}>
           {(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const).map((day, index) => {
             const isFlame = entryDateSet.has(weekDates[index]);
-            const dayNum = new Date(weekDates[index]).getDate();
+            const dayNum = parseInt(weekDates[index].split('-')[2], 10);
             return (
               <View key={day} style={styles.dayCol}>
                 <Text style={styles.dayLabel}>{day}</Text>
@@ -129,16 +169,28 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
         {/* Actions List */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>How would you like to think today?</Text>
-          <Text style={styles.sectionSubtitle}>Select upto 3 to shape up your experience.</Text>
+          <Text style={styles.sectionSubtitle}>Explore your guided topics.</Text>
 
           <View style={styles.actionCardsGroup}>
-            <Pressable style={styles.actionCard} onPress={() => navigation.navigate('ModulesStack')}>
+            <Pressable
+              style={styles.actionCard}
+              onPress={() => {
+                if (mostRecentIncompleteProgress) {
+                  (navigation as any).navigate('ModulesStack', {
+                    screen: 'ModuleDetail',
+                    params: { moduleId: mostRecentIncompleteProgress.moduleId },
+                  });
+                } else {
+                  navigation.navigate('ModulesStack');
+                }
+              }}
+            >
               <View style={styles.actionIconPlaceholder}>
                 <Ionicons name="scan-circle-outline" size={24} color={Colors.primary} />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionCardTitle}>Continue a Module</Text>
-                <Text style={styles.actionCardSubtitle}>Last Entry: {lastEntryText}</Text>
+                <Text style={styles.actionCardTitle}>{continueModuleTitle}</Text>
+                <Text style={styles.actionCardSubtitle}>Last activity: {moduleActivityText}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
             </Pressable>
@@ -149,7 +201,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               <View style={styles.actionContent}>
                 <Text style={styles.actionCardTitle}>Start a New Module</Text>
-                <Text style={styles.actionCardSubtitle}>{entries.length} entries saved</Text>
+                <Text style={styles.actionCardSubtitle}>{incompleteModules} modules available</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
             </Pressable>
@@ -172,11 +224,62 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Your Space */}
+        {/* Recommended Modules */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Space</Text>
-          <Text style={styles.sectionSubtitle}>Select 1 area to shape your experience.</Text>
-          <View style={[styles.actionCardsGroup, { minHeight: 150 }]} />
+          <Text style={styles.sectionTitle}>Recommended For You</Text>
+          <Text style={styles.sectionSubtitle}>Continue your growth journey.</Text>
+          <View style={[styles.actionCardsGroup]}>
+            {(() => {
+              const incompleteModules = MODULES.filter((m) => {
+                const p = moduleProgress.find((mp) => mp.moduleId === m.id);
+                return !p?.isComplete;
+              }).slice(0, 2);
+
+              if (incompleteModules.length === 0) {
+                return (
+                  <View style={styles.allDoneRow}>
+                    <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
+                    <Text style={styles.allDoneText}>All modules complete!</Text>
+                  </View>
+                );
+              }
+
+              return incompleteModules.map((mod) => {
+                const p = moduleProgress.find((mp) => mp.moduleId === mod.id);
+                const hasStarted = (p?.currentStep ?? 0) > 0;
+                return (
+                  <Pressable
+                    key={mod.id}
+                    style={styles.actionCard}
+                    onPress={() =>
+                      (navigation as any).navigate('ModulesStack', {
+                        screen: 'ModuleDetail',
+                        params: { moduleId: mod.id },
+                      })
+                    }
+                  >
+                    <View style={styles.actionIconPlaceholder}>
+                      <Ionicons name="scan-circle-outline" size={24} color={Colors.primary} />
+                    </View>
+                    <View style={styles.actionContent}>
+                      <Text style={styles.actionCardTitle}>{mod.title}</Text>
+                      <View style={styles.modMeta}>
+                        <View style={styles.modCategoryPill}>
+                          <Text style={styles.modCategoryText}>{mod.category}</Text>
+                        </View>
+                        <Text style={styles.actionCardSubtitle}>~{mod.estimatedMinutes} min</Text>
+                      </View>
+                    </View>
+                    <View style={styles.modActionBtn}>
+                      <Text style={styles.modActionBtnText}>
+                        {hasStarted ? 'Continue' : 'Start'}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              });
+            })()}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -211,4 +314,11 @@ const styles = StyleSheet.create({
   actionCardSubtitle: { ...Typography.caption, fontSize: 12, color: Colors.textSecondary },
   exploreBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: Spacing.lg, paddingBottom: Spacing.xs, gap: Spacing.xs },
   exploreText: { ...Typography.caption, color: Colors.textSecondary },
+  modMeta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginTop: 2 },
+  modCategoryPill: { backgroundColor: Colors.primary, paddingHorizontal: Spacing.xs, paddingVertical: 2, borderRadius: Radii.full },
+  modCategoryText: { ...Typography.caption, fontSize: 10, color: Colors.white, fontWeight: '600' },
+  modActionBtn: { backgroundColor: Colors.primaryDark, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radii.full },
+  modActionBtnText: { ...Typography.caption, fontSize: 12, color: Colors.white, fontWeight: '600' },
+  allDoneRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
+  allDoneText: { ...Typography.body, color: Colors.textPrimary, fontWeight: '600' },
 });

@@ -6,9 +6,10 @@ import Button from './Button';
 interface Props {
   onBack: () => void;
   onNext: () => void;
+  nextDisabled?: boolean;
 }
 
-const BottomAction: React.FC<Props> = ({ onBack, onNext }) => {
+const BottomAction: React.FC<Props> = ({ onBack, onNext, nextDisabled = false }) => {
   const { width } = useWindowDimensions();
   const btnSize = width * 0.13;
 
@@ -26,7 +27,13 @@ const BottomAction: React.FC<Props> = ({ onBack, onNext }) => {
       </Pressable>
 
       <View style={styles.nextWrapper}>
-        <Button label="Next" onPress={onNext} variant="filled" style={styles.nextBtnOverride} />
+        <Button
+          label="Next"
+          onPress={onNext}
+          variant="filled"
+          disabled={nextDisabled}
+          style={styles.nextBtnOverride}
+        />
       </View>
     </View>
   );

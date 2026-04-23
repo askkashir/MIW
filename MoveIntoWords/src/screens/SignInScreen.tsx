@@ -26,8 +26,12 @@ const SignInScreen: React.FC<Props> = ({ navigation }) => {
 
   const routeAfterSignIn = async (uid: string, displayName: string, userEmail: string) => {
     const { setUser, setOnboardingComplete } = useUserStore.getState();
-    setUser({ uid, displayName, email: userEmail });
     const profile = await getUserProfile(uid);
+    setUser({
+      uid,
+      displayName: profile?.displayName ?? displayName,
+      email: profile?.email ?? userEmail,
+    });
     if (profile?.onboardingComplete) {
       setOnboardingComplete(true);
       navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
@@ -60,7 +64,7 @@ const SignInScreen: React.FC<Props> = ({ navigation }) => {
       const user = await signInWithGoogle();
       await routeAfterSignIn(user.uid, user.displayName ?? '', user.email ?? '');
     } catch (err) {
-      setError(getAuthErrorMessage(err));
+      setError(err instanceof Error ? err.message : getAuthErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +77,7 @@ const SignInScreen: React.FC<Props> = ({ navigation }) => {
       const user = await signInWithApple();
       await routeAfterSignIn(user.uid, user.displayName ?? '', user.email ?? '');
     } catch (err) {
-      setError(getAuthErrorMessage(err));
+      setError(err instanceof Error ? err.message : getAuthErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

@@ -9,16 +9,26 @@ import { useJournalStore } from '../store/useJournalStore';
 
 type Props = NativeStackScreenProps<JourneyStackParamList, 'EntryArchive'>;
 
-const formatDate = (ts: number): string => {
-  return new Date(ts).toLocaleDateString('default', {
+const formatDate = (ts: number): string =>
+  new Date(ts).toLocaleDateString('default', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
   });
-};
 
 const wordCount = (content: string): number =>
   content.split(/\s+/).filter(Boolean).length;
+
+/**
+ * If the entry was created by a module completion its content starts with
+ * "[Module Title]" — extract and return the name, otherwise return null.
+ */
+const extractModuleName = (content: string): string | null => {
+  if (!content.startsWith('[')) return null;
+  const end = content.indexOf(']');
+  if (end === -1) return null;
+  return content.slice(1, end);
+};
 
 export const EntryArchiveScreen: React.FC<Props> = ({ navigation }) => {
   const entries = useJournalStore((s) => s.entries);
@@ -57,13 +67,19 @@ export const EntryArchiveScreen: React.FC<Props> = ({ navigation }) => {
               {entries.map((entry) => {
                 const preview = entry.content.trim().slice(0, 100);
                 const words = wordCount(entry.content);
+                const moduleName = extractModuleName(entry.content);
                 return (
                   <Pressable key={entry.id} style={styles.entryCard} onPress={() => navigation.navigate('EntryDetail', { entryId: entry.id })}>
                     <View style={styles.entryIconBox}>
-                      <Ionicons name="flash" size={16} color="#F2C94C" />
+                      <Ionicons name={moduleName ? 'layers' : 'flash'} size={16} color="#F2C94C" />
                     </View>
                     <View style={styles.entryContent}>
                       <Text style={styles.entryTitle}>{formatDate(entry.createdAt)}</Text>
+                      {moduleName && (
+                        <View style={styles.moduleTag}>
+                          <Text style={styles.moduleTagText}>{moduleName}</Text>
+                        </View>
+                      )}
                       <Text style={styles.entryPreview} numberOfLines={3}>
                         {preview}{entry.content.length > 100 ? '...' : ''}
                       </Text>
@@ -109,4 +125,6 @@ const styles = StyleSheet.create({
   entryTitle: { fontFamily: FontFamily.serif, fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: Spacing.xs },
   entryPreview: { ...Typography.caption, color: Colors.textSecondary, lineHeight: 18, marginBottom: Spacing.sm },
   entryMeta: { ...Typography.caption, fontSize: 11, color: Colors.textSecondary },
+  moduleTag: { alignSelf: 'flex-start', backgroundColor: Colors.primary, paddingHorizontal: Spacing.xs, paddingVertical: 2, borderRadius: Radii.full, marginBottom: Spacing.xs },
+  moduleTagText: { ...Typography.caption, fontSize: 10, color: Colors.white, fontWeight: '700' },
 });

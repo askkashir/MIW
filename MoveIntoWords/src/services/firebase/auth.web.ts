@@ -12,6 +12,8 @@ import {
   sendEmailVerification,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
   type User,
   type Unsubscribe,
 } from 'firebase/auth';
@@ -66,14 +68,21 @@ export async function signInWithEmail(
   return credential.user;
 }
 
-/** Google Sign-In is not available on web — throws a user-friendly error. */
+/** Google Sign-In for Web — uses a popup. */
 export async function signInWithGoogle(): Promise<User> {
-  throw new Error('Google Sign-In is not available on web. Please use email sign-in.');
+  try {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (error) {
+    console.error('Google Sign-In Error:', error);
+    throw new Error('Google Sign-In failed. Please try again or use email.');
+  }
 }
 
 /** Apple Sign-In is not available on web — throws a user-friendly error. */
 export async function signInWithApple(): Promise<User> {
-  throw new Error('Apple Sign-In is not available on web. Please use email sign-in.');
+  throw new Error('Apple Sign-In is only available on the mobile app. Please use email to sign in.');
 }
 
 // ── Verification ──────────────────────────────────────────────────────────────

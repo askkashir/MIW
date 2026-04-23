@@ -14,44 +14,60 @@ const JournalDeepenScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const PREVIOUS_RESPONSE = incomingContent.length > 0
     ? incomingContent
-    : "Right now, I'm juggling a few deadlines at once and trying not to drop any details. It's mostly.....";
+    : "No previous entry provided.";
+
+  const content = (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={styles.header}>
+        <JournalProgress currentStep={2} totalSteps={4} activeColor={Colors.primary} inactiveColor={Colors.dotInactive} />
+        <TouchableOpacity style={styles.crisisLink} onPress={() => (navigation as any).navigate('CrisisResources')}>
+          <Text style={styles.crisisText}>Crisis Resources</Text>
+        </TouchableOpacity>
+        <View style={styles.titleContainer}>
+          <View style={styles.iconCircle}><Text style={styles.iconText}>💧</Text></View>
+          <Text style={[Typography.h1, styles.title]}>Deepen</Text>
+        </View>
+      </View>
+      <View style={styles.content}>
+        <Text style={[Typography.body, styles.contextText]}>Based on what you shared here's something to sit with.</Text>
+        <Text style={[Typography.body, styles.previousResponse]}>{PREVIOUS_RESPONSE}</Text>
+        <View style={styles.promptContainer}>
+          <Text style={[Typography.body, styles.promptHighlight]}>Looking at what you just wrote...</Text>
+          <Text style={[Typography.body, styles.promptHighlight]}>What part of that feels hardest to let go of?</Text>
+        </View>
+        <TextInput
+          style={[Typography.body, styles.input]}
+          placeholder="Start typing..."
+          placeholderTextColor={Colors.textPlaceholder}
+          multiline
+          autoFocus={true}
+          value={text}
+          onChangeText={setText}
+          textAlignVertical="top"
+        />
+      </View>
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.ctaButton, !text.trim() && { opacity: 0.5 }]}
+          onPress={() => navigation.navigate('JournalReflect', { content: incomingContent, deepenContent: text })}
+          disabled={!text.trim()}
+        >
+          <Text style={[Typography.button, styles.ctaButtonText]}>Next</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={[Typography.button, styles.backButtonText]}>← Back to my first entry</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.header}>
-            <JournalProgress currentStep={2} totalSteps={4} activeColor={Colors.primary} inactiveColor={Colors.dotInactive} />
-            <TouchableOpacity style={styles.crisisLink} onPress={() => (navigation as any).navigate('CrisisResources')}>
-              <Text style={styles.crisisText}>Crisis Resources</Text>
-            </TouchableOpacity>
-            <View style={styles.titleContainer}>
-              <View style={styles.iconCircle}><Text style={styles.iconText}>💧</Text></View>
-              <Text style={[Typography.h1, styles.title]}>Deepen</Text>
-            </View>
-          </View>
-          <View style={styles.content}>
-            <Text style={[Typography.body, styles.contextText]}>Based on what you shared here's something to sit with.</Text>
-            <Text style={[Typography.body, styles.previousResponse]}>{PREVIOUS_RESPONSE}</Text>
-            <View style={styles.promptContainer}>
-              <Text style={[Typography.body, styles.promptHighlight]}>You mentioned bordem.</Text>
-              <Text style={[Typography.body, styles.promptHighlight]}>What part of that feels hardest to let go of?</Text>
-            </View>
-            <TextInput style={[Typography.body, styles.input]} placeholder="Start typing..." placeholderTextColor={Colors.textPlaceholder} multiline autoFocus={false} value={text} onChangeText={setText} textAlignVertical="top" />
-          </View>
-          <View style={styles.footer}>
-            <TouchableOpacity
-              style={styles.ctaButton}
-              onPress={() => navigation.navigate('JournalReflect', { content: incomingContent, deepenContent: text })}
-            >
-              <Text style={[Typography.button, styles.ctaButtonText]}>Start Writing</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Text style={[Typography.button, styles.backButtonText]}>← Back to my first entry</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      {Platform.OS === 'web' ? content : (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          {content}
+        </TouchableWithoutFeedback>
+      )}
     </SafeAreaView>
   );
 };

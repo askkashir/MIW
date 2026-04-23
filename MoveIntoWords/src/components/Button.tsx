@@ -52,9 +52,9 @@ const Button: React.FC<ButtonProps> = ({
       style={({ pressed }) => [
         styles.base,
         isFilled ? styles.filled : styles.outline,
-        pressed && !disabled && styles.pressed,
-        disabled && styles.disabled,
         style,
+        pressed && !disabled && styles.pressed,
+        (disabled || loading) && styles.disabled,
       ]}
     >
       {loading ? (
@@ -99,6 +99,6 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   disabled: {
-    opacity: 0.45,
+    opacity: 0.5,
   },
 });

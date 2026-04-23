@@ -1,11 +1,5 @@
 /**
  * useJournalStore — Global journal entries and module progress state.
- *
- * All arrays start empty. Firestore will populate these via
- * src/services/firebase/firestore.ts stubs once Firebase is integrated.
- *
- * TODO (Firebase): Call loadEntries() and loadModuleProgress() after
- * the user signs in (in the onAuthStateChanged listener).
  */
 
 import { create } from 'zustand';

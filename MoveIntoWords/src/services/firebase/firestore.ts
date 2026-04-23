@@ -92,21 +92,20 @@ export async function getJournalEntries(
 
 /**
  * Save / upsert module progress for the user.
- * Uses setDoc with merge to allow partial updates.
+ * Uses setDoc with merge:true so only provided fields are updated
+ * — existing responses for other steps are never wiped.
  */
 export async function saveModuleProgress(
   uid: string,
   progress: ModuleProgress,
 ): Promise<void> {
-  await setDoc(
-    doc(db, 'moduleProgress', uid, 'modules', progress.moduleId),
-    progress,
-    { merge: true },
-  );
+  const ref = doc(db, 'moduleProgress', uid, 'modules', progress.moduleId);
+  await setDoc(ref, { ...progress, lastUpdatedAt: Date.now() }, { merge: true });
 }
 
 /**
  * Fetch all module progress records for the user.
+ * Defaults missing fields so old documents are backward-compatible.
  */
 export async function getModuleProgress(
   uid: string,
@@ -114,5 +113,17 @@ export async function getModuleProgress(
   const snap = await getDocs(
     collection(db, 'moduleProgress', uid, 'modules'),
   );
-  return snap.docs.map((d) => d.data() as ModuleProgress);
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      moduleId: data.moduleId ?? d.id,
+      currentStep: data.currentStep ?? 0,
+      totalSteps: data.totalSteps ?? 3,
+      isComplete: data.isComplete ?? false,
+      responses: data.responses ?? {},
+      startedAt: data.startedAt ?? Date.now(),
+      lastUpdatedAt: data.lastUpdatedAt ?? Date.now(),
+      ...(data.completedAt !== undefined ? { completedAt: data.completedAt } : {}),
+    } as ModuleProgress;
+  });
 }
