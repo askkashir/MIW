@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "16528285265-drub07c81qiqdkr96bmn9cvstidonbqo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.moveintowords.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
           "client_id": "16528285265-m38o8h0nqa1vl1m81cfcsl58q9bpvc14.apps.googleusercontent.com",
           "client_type": 3
         }
