@@ -1,0 +1,177 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput as RNTextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Colors, Typography, Spacing, Radii, FontFamily } from '../constants/Theme';
+import { useThemeColors } from '../hooks/useThemeColors';
+import { AuthStackParamList } from '../types';
+import { Ionicons } from '@expo/vector-icons';
+import Button from '../components/Button';
+import { useUserStore } from '../store/useUserStore';
+
+const MODULES = [
+  { id: 'love',          label: 'Love',          icon: 'heart',    color: '#D21A5F' },
+  { id: 'relationships', label: 'Relationships', icon: 'people',   color: '#3A74D4' },
+  { id: 'career',        label: 'Career',        icon: 'briefcase', color: '#D43E3A' },
+  { id: 'development',   label: 'Development',   icon: 'business', color: '#6A87A6' },
+  { id: 'finance',       label: 'Finance',       icon: 'cash',     color: '#27AE60' },
+  { id: 'wellness',      label: 'Wellness',      icon: 'star',     color: '#F2C94C' },
+];
+
+const AGE_RANGES = ['18 – 24', '25 – 29', '30 – 35'];
+const GENDERS = ['Man', 'Women', 'Prefer not to say'];
+const MIN_TOPICS = 3;
+
+type Props = NativeStackScreenProps<AuthStackParamList, 'Personalize'>;
+
+export const PersonalizeScreen: React.FC<Props> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const { setPreferences, uid, email } = useUserStore();
+  const [name, setName] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [selectedAge, setSelectedAge] = useState<string | null>('18 - 24');
+  const [selectedGender, setSelectedGender] = useState<string | null>('Women');
+  const [selectedModules, setSelectedModules] = useState<string[]>([]);
+  const [topicError, setTopicError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  const toggleModule = (id: string) => {
+    setTopicError(null);
+    setSelectedModules((prev) => {
+      if (prev.includes(id)) return prev.filter((m) => m !== id);
+      if (prev.length >= 3) return prev;
+      return [...prev, id];
+    });
+  };
+
+  const handleContinue = () => {
+    if (!name.trim()) {
+      setNameError('Please enter your name to continue');
+      return;
+    }
+    if (selectedModules.length < MIN_TOPICS) {
+      setTopicError(`Please select at least ${MIN_TOPICS} topics to continue`);
+      return;
+    }
+    setNameError(null);
+    // Write the display name to Zustand so RitualScreen.createUserProfile picks it up
+    useUserStore.getState().setUser({
+      uid: uid ?? '',
+      displayName: name.trim(),
+      email: email ?? '',
+    });
+    setPreferences({ ageRange: selectedAge, gender: selectedGender, topics: selectedModules });
+    navigation.navigate('Ritual');
+  };
+
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Personalize Your{'\n'}Space Yourself.</Text>
+
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={styles.cardTitle}>Tell us a bit more about yourself.</Text>
+          <Text style={styles.cardSubtitle}>Let's start with your name, then share a bit more about you.</Text>
+
+          <Text style={styles.label}>What should we call you?</Text>
+          <RNTextInput
+            style={styles.nameInput}
+            placeholder="Your first name"
+            placeholderTextColor={colors.textPlaceholder}
+            value={name}
+            onChangeText={(t) => { setName(t); setNameError(null); }}
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
+          {nameError && <Text style={styles.topicError}>{nameError}</Text>}
+
+          <Text style={styles.label}>Age Range</Text>
+          <View style={styles.pillRow}>
+            {AGE_RANGES.map((age) => {
+              const isActive = selectedAge === age;
+              return (
+                <Pressable key={age} onPress={() => setSelectedAge(age)} style={[styles.pill, isActive ? styles.pillActive : styles.pillInactive]}>
+                  <Text style={[styles.pillText, isActive ? styles.pillTextActive : styles.pillTextInactive]}>{age}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.label}>Gender</Text>
+          <View style={styles.pillRow}>
+            {GENDERS.map((gen) => {
+              const isActive = selectedGender === gen;
+              return (
+                <Pressable key={gen} onPress={() => setSelectedGender(gen)} style={[styles.pill, isActive ? styles.pillActive : styles.pillInactive]}>
+                  <Text style={[styles.pillText, isActive ? styles.pillTextActive : styles.pillTextInactive]}>{gen}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { fontFamily: FontFamily.serif, fontSize: 18 }]}>Where would you like to begin?</Text>
+          <Text style={styles.cardSubtitle}>Select at least 3 to shape your experience.</Text>
+
+          <View style={styles.modulesGrid}>
+            {(showAll ? MODULES : MODULES.slice(0, 6)).map((mod) => {
+              const isActive = selectedModules.includes(mod.id);
+              return (
+                <Pressable key={mod.id} onPress={() => toggleModule(mod.id)} style={[styles.moduleBtn, isActive && styles.moduleBtnActive]}>
+                  <Ionicons name={mod.icon as React.ComponentProps<typeof Ionicons>['name']} size={20} color={mod.color} />
+                  <Text style={styles.moduleText}>{mod.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {topicError && <Text style={styles.topicError}>{topicError}</Text>}
+
+          <Pressable style={styles.showAllBtn} onPress={() => setShowAll((v) => !v)}>
+            <Text style={styles.showAllText}>{showAll ? 'Show less' : 'Show all'}</Text>
+            <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textPrimary} />
+          </Pressable>
+        </View>
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <Button label="Continue" onPress={handleContinue} style={styles.continueBtn} />
+        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backText}>Back</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+export default PersonalizeScreen;
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: Colors.background },
+  scrollContent: { padding: Spacing.xl, paddingTop: Spacing.xxl + Spacing.xl },
+  title: { ...Typography.h1, textAlign: 'center', marginBottom: Spacing.xxl },
+  card: { backgroundColor: Colors.surface, borderRadius: Radii.lg, padding: Spacing.lg, marginBottom: Spacing.lg, shadowColor: Colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  cardTitle: { fontFamily: FontFamily.serif, fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: Spacing.xxs },
+  cardSubtitle: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.lg },
+  label: { ...Typography.caption, fontWeight: '600', color: Colors.textPrimary, marginBottom: Spacing.sm },
+  nameInput: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border, borderRadius: Radii.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2, ...Typography.body, color: Colors.textPrimary, marginBottom: Spacing.lg },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.lg },
+  pill: { paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md, borderRadius: Radii.full, borderWidth: 1 },
+  pillActive: { backgroundColor: Colors.primaryDark, borderColor: Colors.primaryDark },
+  pillInactive: { backgroundColor: Colors.white, borderColor: Colors.border },
+  pillText: { ...Typography.caption, fontWeight: '600' },
+  pillTextActive: { color: Colors.white },
+  pillTextInactive: { color: Colors.textPrimary },
+  modulesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, justifyContent: 'space-between' },
+  moduleBtn: { flexDirection: 'row', alignItems: 'center', width: '48%', paddingVertical: Spacing.sm, paddingHorizontal: Spacing.sm, borderRadius: Radii.sm, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.white, marginBottom: Spacing.xs, gap: Spacing.sm },
+  moduleBtnActive: { borderColor: Colors.primaryDark, backgroundColor: '#F7EFF1' },
+  moduleText: { ...Typography.caption, fontWeight: '600', color: Colors.textPrimary },
+  topicError: { ...Typography.caption, color: Colors.error, marginTop: Spacing.sm, textAlign: 'center' },
+  showAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: Spacing.lg, gap: Spacing.xs },
+  showAllText: { ...Typography.caption, color: Colors.textPrimary },
+  footer: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg, paddingBottom: Spacing.xxl },
+  continueBtn: { borderRadius: Radii.full, backgroundColor: Colors.primaryDark, marginBottom: Spacing.lg },
+  backBtn: { alignItems: 'center', paddingVertical: Spacing.xs },
+  backText: { ...Typography.button, color: Colors.textPrimary },
+});
